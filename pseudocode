@@ -1,0 +1,8 @@
+profile names
+     list of names to create profiles in
+
+profile path
+      reference profile to clone from
+      
+use git to preserve space?
+
