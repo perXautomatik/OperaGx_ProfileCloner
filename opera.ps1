@@ -5,8 +5,8 @@ todo: just load all crxs in folder, use alias to filter.
 todo: psreadline completion from profile folder
 todo: specify cache path ( todays date, and profileName ) 
 todo: cache deduplication? ( autodele files occuring always? )
-todo: specifying 
- 
+todo: specifying folders to delete on closing, or files to keep
+
 #>
 
 param(
