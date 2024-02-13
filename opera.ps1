@@ -5,6 +5,7 @@ todo: just load all crxs in folder, use alias to filter.
 todo: psreadline completion from profile folder
 todo: specify cache path ( todays date, and profileName ) 
 todo: cache deduplication? ( autodele files occuring always? )
+todo: specifying 
  
 #>
 
@@ -21,15 +22,19 @@ param(
                 '--side-profile-minimal ' +
                 '--with-feature:side-profiles ' +
                 '--no-default-browser-check'
-                ,   
-  $extensionsToLoad = @(
+                ,  
+                $extensionsToLoad = (get-childitem -path "$pwd\crx").fullname
+  , $launcher = ".\OperaGXPortable\App\OperaGX\launcher.exe"
+  )
+ <# 
+  @(
   "$pwd\crx\VisualBookmarks_5_12_2_0.crx",
   "$pwd\crx\Folderwise-Bookmarks-Search-Sessions.crx",
   "$pwd\crx\downloadhelper_8_2_0_20.crx"
   ),
+#>
 
-  $launcher = ".\OperaGXPortable\App\OperaGX\launcher.exe"
-  )
+
 function Launch_opera_profile ($profile) {
     
     if($profile)
@@ -175,6 +180,7 @@ function rnAfter{if($RenameAfter){
 
 #'353238305F393330303834303437' 
 $prof = (RenameAsCopyMoveTask -hard $false )
+$presentFolders             
+
 Launch_opera_profile -profile $prof ; rnAfter
 
-$presentFolders             
