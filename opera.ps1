@@ -41,36 +41,28 @@ param(
 #>
 
 
-function Launch_opera_profile ($profile) {
-    
-    if($profile)
-    {
-    #--allow-profiles-outside-user-dir
-        $param = '--side-profile-name=' +'"'+ $profile+'"'
-    }
-    else
-    {
-       $profile = $profileFolder+"\"+ $a;
-       $param = '--side-profile-name=' +'"'+ $profile+'"'
-    }
+function Launch_opera_profile {
+    param(
+        $profile = $profileFolder+"\"+ $a; 
+    )
+
+    $param = '--side-profile-name=' +'"'+ $profile+'"' #--allow-profiles-outside-user-dir
 
     if($extensionsToLoad)
     {
         $param = $param + " --load-extension=" +'"'+ ($extensionsToLoad -join ',') +'"'
     }
 
-    $AllArgs = @($param, $defaultP)
-
-    echo $AllArgs
+    $AllArgs = @($param, $defaultP); echo $AllArgs
 
     $processOptions = @{
         FilePath = $launcher
         ArgumentList = $AllArgs
-    }
-echo $processOptions
+    }; echo $processOptions
+    
     Start-Process @processOptions -Wait 
 
-    ($profileFolder+$a+"\Cache\Cache_Data") | Set-Clipboard 
+    return ($profileFolder+$a+"\Cache\Cache_Data") 
 }
 
 function RenameAsCopyMoveTask{
