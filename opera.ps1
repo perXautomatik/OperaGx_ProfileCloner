@@ -9,6 +9,12 @@ todo: specifying folders to delete on closing, or files to keep
 
 #>
 
+ 
+#--allowlisted-extension-id ⊗	Adds the given extension ID to all the permission allowlists. ↪
+#--apps-gallery-download-url ⊗	The URL that the webstore APIs download extensions from. Note: the URL must contain one '%s' for the extension ID. ↪
+#--copy-to-download-dir ⊗	Copy user action data to download directory. ↪
+
+
 param(
   $a = 'a_jap',
   $profileFolder = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
@@ -171,13 +177,6 @@ function rnAfter{if($RenameAfter){
     }
 }
 }
-
- 
-#--allowlisted-extension-id ⊗	Adds the given extension ID to all the permission allowlists. ↪
-#--apps-gallery-download-url ⊗	The URL that the webstore APIs download extensions from. Note: the URL must contain one '%s' for the extension ID. ↪
-#--copy-to-download-dir ⊗	Copy user action data to download directory. ↪
-
-
 #'353238305F393330303834303437' 
 $prof = (RenameAsCopyMoveTask -hard $false )
 $presentFolders             
