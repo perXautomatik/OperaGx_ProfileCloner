@@ -24,10 +24,11 @@ param(
   $RenameAfter = !($a -match 'a_') -or $rename,
   $cloneIfempty = $true,
   $defaultP = 
-                '--disable-usage-statistics-question ' +
-                '--side-profile-minimal ' +
-                '--with-feature:side-profiles ' +
-                '--no-default-browser-check'
+                '--disable-usage-statistics-question' +
+                ' --side-profile-minimal' +
+                ' --with-feature:side-profiles' +
+                ' --no-default-browser-check' + 
+                " --download.default_directory=$pwd\downloads\"
                 ,  
                 $extensionsToLoad = (get-childitem -path "$pwd\crx").fullname
   , $launcher = ".\OperaGXPortable\App\OperaGX\launcher.exe"
