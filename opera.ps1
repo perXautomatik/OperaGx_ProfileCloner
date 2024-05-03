@@ -42,10 +42,16 @@ param(
 
 
 function Launch_opera_profile {
-    param(
-        $profile = $profileFolder+"\"+ $a; 
-    )
-
+    
+    if($a)
+    {
+    $profile = $a
+    }
+    else
+    {
+        $profile = (join-path -path $profileFolder -child $a)
+    }
+        
     $param = '--side-profile-name=' +'"'+ $profile+'"' #--allow-profiles-outside-user-dir
 
     if($extensionsToLoad)
@@ -62,7 +68,7 @@ function Launch_opera_profile {
     
     Start-Process @processOptions -Wait 
 
-    return ($profileFolder+$a+"\Cache\Cache_Data") 
+    return (($profileFolder+$a+"\Cache\Cache_Data") -replace '\\', '\')
 }
 
 function presentFolders{
@@ -124,5 +130,5 @@ function rnAfter{
 
    
 
-Launch_opera_profile -profile $prof ; rnAfter
+Launch_opera_profile ; rnAfter
 
