@@ -33,6 +33,30 @@ function presentFolders{
 }
 
 
+function rnAfter{
+  
+      if($RenameAfter){
+      echo "after waiting"
+      #'353238305F393330303834303437' 
+      $prof = (RenameAsCopyMoveTask -hard $false )
+      presentFolders          
+      [void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic')
+
+      $title = 'Do you want to rename '+$profilex
+      $msg   = 'NewName:'
+
+      $text = [Microsoft.VisualBasic.Interaction]::InputBox($msg, $title)
+      if($text)
+      {
+          ($profileFolder | Join-Path -ChildPath $profilex) | Rename-Item -NewName $text
+      }
+      else
+      {
+        echo "empty"
+      }
+  }
+}
+
 function SelectItemFromListBox($list){
 
 Add-Type -AssemblyName System.Windows.Forms
