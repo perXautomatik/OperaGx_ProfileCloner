@@ -40,11 +40,15 @@
 
     # Copy items to cache
     foreach ($ctcItem in $CopyToCache) {
-        $ctcSource = Join-Path -Path $profilePath -ChildPath $ctcItem
-        $ctcDestiny = Join-Path -Path $cachePath -ChildPath (Split-Path $ctcItem -Leaf)
-        if (Test-Path -Path $ctcSource) {
-            Copy-Item -Path $ctcSource -Destination $ctcDestiny -Recurse -Force
-        }
+        $ctcSource = Join-Path -Path $renamedProfilePath -ChildPath $ctcItem
+
+        $files = $ctcSource | % {Get-ChildItem -Path $_ -Recurse }
+        $files | % {
+                $ctcDestiny = Join-Path -Path $cachePath -ChildPath (Split-Path $_.name -Leaf)
+                if (Test-Path -Path $_.FullName) {
+                    Copy-Item -Path $_.FullName -Destination $ctcDestiny -Recurse -Force
+                }
+            }
     }
     # Copy items to cache and preserve items
     foreach ($item in ($preserve + $CopyToCache)) {

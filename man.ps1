@@ -219,4 +219,5 @@ $preserve =  @('Bookmarks'
 ,'Cookies','Cache')
 
     & .\OperaLauncher\PurgeProfile.ps1 -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode -CopyToCache $copyToCache -preserve $preserve
+    
     clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
