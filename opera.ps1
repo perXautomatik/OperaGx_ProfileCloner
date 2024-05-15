@@ -23,12 +23,13 @@ param(
   $profileInProfileFolder = $true,
   $RenameAfter = !($a -match 'a_') -or $rename,
   $cloneIfempty = $true,
+  $dls = (Join-Path $pwd "downloads"),
   $defaultP = 
                 '--disable-usage-statistics-question' +
                 ' --side-profile-minimal' +
                 ' --with-feature:side-profiles' +
                 ' --no-default-browser-check' + 
-                " --download.default_directory=$pwd\downloads\"
+                " --download.default_directory=$dls"
                 ,  
                 $extensionsToLoad = (get-childitem -path "$pwd\crx").fullname
   , $launcher = ".\OperaGXPortable\App\OperaGX\launcher.exe"
@@ -131,5 +132,5 @@ function rnAfter{
 
    
 
-Launch_opera_profile ; rnAfter
+Launch_opera_profile #; rnAfter
 

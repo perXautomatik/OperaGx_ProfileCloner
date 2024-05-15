@@ -27,7 +27,7 @@ function SetFileExtensionThroughPiping()
 		# Get the total number of files
 		$total = $files.Count
 
-		# Initialize a counter for the current file
+		# Initialize unfiltered counter for the current file
 		$current = 0
 
         $shell = $Host.UI.RawUI
@@ -46,7 +46,7 @@ function SetFileExtensionThroughPiping()
 		  # Change the console title
 		  $shell.WindowTitle  = "Progress $($percent)% @ $($location)"
 
-		  # Write a progress message with a progress bar
+		  # Write unfiltered progress message with unfiltered progress bar
 		  Write-Progress -Activity "Setting file extensions in $location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
 
 		  # Set the file extension if it does not match the one from trid
@@ -54,77 +54,12 @@ function SetFileExtensionThroughPiping()
 		}
 	}
 
-function MoveOutFromCache { 
-    param (
-        $profileName = "a_vin", 
-        $driveLetter = "E:", 
-        $sessionStorage = "$driveLetter\sessionStorage\$profileName",
-        $profileLocation = "$driveLetter\_side_profiles\$profileName\",
-        $cachfoldername = "cache",
-        $innerCacheFolder = "cache_data"
-        ) 
-    
-        $dateTime = Get-Date -Format "yyyyMMdd_HHmmss";
-        $excludedExtensions = @(".pam", ".zip", ".tar", ".gz", ".null", ".gpg", ".woff2", ".woff", ".bs", ".ini" );   
-        
-        cd $profileLocation ; 
-        $a = @(); 
-        $q = (get-childitem  -dept 1 -include $cachfoldername) ; 
-        
-        $a = @($q | get-childitem -filter $innerCacheFolder | select fullname) ; 
-        
-        $a | % { 
-            ( $_.fullname | SetFileExtensionThroughPiping ) ; 
-        
-            $originalFolderPath = $_.fullname ; 
-                             
-            $rnd = Get-ChildItem -Path $originalFolderPath -File;
-            $withExtensions = $rnd | ? { $_.Extension };
-            $excludingExt = $withExtensions | ? { $_.Extension -notin $excludedExtensions };
-            
-            if ($excludingExt.Length -gt 0){
-                $from = ($excludingExt | Sort-Object CreationTime | Select-Object -First 1).CreationTime
-                $to = ($excludingExt | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
-                
-                $newFolderPath = Join-Path ($sessionStorage) $dateTime ;             
-                New-Item -ItemType Directory -Force -Path $newFolderPath ;
-
-                $excludingExt | % {  Move-Item -Path $_.FullName -Destination $newFolderPath  } } 
-            }
-            else {
-                Write-Host "no cache"
-            }
-
-    }
-
-    function Invoke-OperaLauncher {
-        [CmdletBinding(SupportsShouldProcess)]
-        param (
-          [Parameter(Mandatory, Position = 0)]
-          [string]
-          $q,
-          [Parameter(Position = 1)]
-          [string]
-          $DriveLetter = 'F:',
-          [array]
-          $excludedExtensions = @(".pam", ".zip", ".tar")
-        )
-      
-        Write-Verbose "Invoking OperaLauncher with parameter $q on drive $DriveLetter"
-      
-        if ($PSCmdlet.ShouldProcess("OperaLauncher", "Invoke")) {
-          $originalFolderPath = Invoke-Expression "Set-Location $DriveLetter\; .\OperaLauncher\opera.ps1 -a $q"
-          cd "$driveLetter\_side_profiles\$q\" ; $a = @(get-childitem  -dept 1 -include cache | get-childitem | select fullname) ; $a | %{ ( set-clipboard $_.fullname | & SetFileExtension ) ; $originalFolderPath = $_.fullname ; $excludedExtensions = ".pam", ".zip", ".tar" ; $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"; $newFolderPath = Join-Path (Split-Path $originalFolderPath) $dateTime ; New-Item -ItemType Directory -Force -Path $newFolderPath ; Get-ChildItem -Path $originalFolderPath -File | ? { $_.Extension } | ? { $_.Extension -notin $excludedExtensions } | %{ Move-Item -Path $_.FullName -Destination $newFolderPath } }
-        }
-      }
-
-
-function todo-Invoke-OperaLauncher {
+    function todo-Invoke-OperaLauncher {
     [CmdletBinding(SupportsShouldProcess)]
     param (
       [Parameter(Mandatory, Position = 0)]
       [string]
-      $q,
+      $childNode,
       [Parameter(Position = 1)]
       [string]
       $DriveLetter = 'F:',
@@ -138,13 +73,13 @@ function todo-Invoke-OperaLauncher {
   
     # Embed the code for registering the custom predictor module
     try {
-      Register-ArgumentCompleter -CommandName $PSCmdlet.MyInvocation.MyCommand.Name -ParameterName q -ScriptBlock {
+      Register-ArgumentCompleter -CommandName $PSCmdlet.MyInvocation.MyCommand.Name -ParameterName childNode -ScriptBlock {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
   
         # Import the custom predictor module
         Import-Module -Name "$DriveLetter\OperaLauncher\Modules\CustomPredictor.psm1"
   
-        # Create a prediction context object with the current command line
+        # Create unfiltered prediction context object with the current command line
         $context = [PredictionContext]::Create($PSCommandHistory[0])
   
         # Call the GetSuggestion method of the custom predictor class
@@ -161,30 +96,127 @@ function todo-Invoke-OperaLauncher {
       return
     }
   
-    Write-Verbose "Invoking OperaLauncher with parameter $q on drive $DriveLetter"
+    Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $DriveLetter"
   
     if ($PSCmdlet.ShouldProcess("OperaLauncher", "Invoke")) {
       # Check the parameter set name and call the corresponding function
       if ($PSCmdlet.ParameterSetName -eq 'Encode') {
-        Encode-OperaLauncher -q $q -DriveLetter $DriveLetter
+        Encode-OperaLauncher -q $childNode -DriveLetter $DriveLetter
       }
       elseif ($PSCmdlet.ParameterSetName -eq 'Decode') {
-        Decode-OperaLauncher -q $q -DriveLetter $DriveLetter
+        Decode-OperaLauncher -q $childNode -DriveLetter $DriveLetter
       }
     }
   }
 
-
   
-$q = "a_vin" ;
-$uu = 'E:';
-$yy = '\_side_profiles'
-$scriptLoc = '\OperaLauncher'
 
-cd (join-path $uu $scriptLoc);
+        
+    function moveBasedONextnesion() {
+        [CmdletBinding()]
+        param (     
+            $originalFolderPath,
+            $excludedExtension,
+            $newFolderPath
+        )
+            $exect = @($excludedExtension -split "," );   
+        
+            $unfiltered = (Get-ChildItem -Path $originalFolderPath -File)
+            $withExtensions = $unfiltered | ? { $_.Extension };
+            $filteredToMove = $withExtensions | ? { $_.Extension -notin $exect };
+            $zz = $filteredToMove.Length;
+            $z = [bool]$zz -gt 0;
+            
+            if ( $z ){
+                
+                
+                New-Item -ItemType Directory -Force -Path $newFolderPath ;
 
-Get-ChildItem -Path (join-path $uu $yy) -Directory| 
-    ?{ $_.name -eq $q } | 
-        % { MoveOutFromCache -profileName $_.Name } ;
+                $filteredToMove | % {  Move-Item -Path $_.FullName -Destination $newFolderPath -PassThru  }              
+                Write-Host (""+($filteredToMove.Length)+ "/" + ($newFolderPath | get-childitem).length)
+            }
+            else {
+                Write-Host "no cache"
+            }
+    }
 
-Invoke-OperaLauncher -DriveLetter $uu -q $q
+    function get-sesId {
+        param(
+            $childPath
+        )
+
+        $internalItems = ($childPath | get-childitem );            
+        $firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
+        $lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
+        $q = $lastFile -$firtFile
+                                    
+        if($q.Days -gt 0)
+        {
+            $from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
+            $to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
+        }
+
+        $sessionId = (Get-Date -Format "yyMMdd_HHmmss");
+        return $sessionId;
+    }
+
+    function clearCache() {
+
+        [CmdletBinding()]
+        param (            
+            [alias("driveLet")]$driveLetter = "E:",             
+            $pathSufix = "\_side_profiles",            
+            [alias("profileName")]$childNode, # = "a_vin" 
+            $sourceFold = (join-path $driveLet $pathSufix),            
+            $profileLocation = (join-path $sourceFold $childNode),  
+            $sessionStorage = "$driveLetter\sessionStorage",                     
+            $exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+        )
+
+        Push-Location;
+        cd $sourceFold;        
+
+        $unfiltered = @((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) ; 
+        $unfiltered | % { 
+            $childNode = $_.parent.parent
+            
+            $sesStor = "$driveLetter\sessionStorage\$childNode"
+
+            $sessionId = get-sesId -childPath $childNode;
+                
+            $newFol = (Join-Path ($sesStor) $sessionId)
+            if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) {
+                Write-Debug "already exsisting"
+            }
+            else
+            {
+                ( $_.fullname | SetFileExtensionThroughPiping ) ; 
+                moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
+            }                
+            
+        }    
+
+        Pop-Location;
+
+    }
+
+    $childNode = "a_mat" ;
+    $driveLet = 'E:';
+    $pathSufix = '\_side_profiles'
+    $scriptLoc = '\OperaLauncher'
+    [array]$excludedExtensions = @(".pam", ".zip", ".tar")   
+    
+    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+  
+    Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
+
+    Invoke-Expression "Set-Location $driveLet\; .\OperaLauncher\opera.ps1 -a $childNode"
+$copyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob','Sessions')
+$preserve =  @('Bookmarks'
+,'History'
+,'Bookmarks.bak'
+,'Web Data','Extension State'
+,'Cookies','Cache')
+
+    & .\OperaLauncher\PurgeProfile.ps1 -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode -CopyToCache $copyToCache -preserve $preserve
+    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
