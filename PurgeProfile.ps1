@@ -42,33 +42,43 @@
     foreach ($ctcItem in $CopyToCache) {
         $ctcSource = Join-Path -Path $renamedProfilePath -ChildPath $ctcItem
 
-        $files = $ctcSource | % {Get-ChildItem -Path $_ -Recurse }
+        $files = $ctcSource | % {Get-ChildItem -Path $_ -Recurse -File }
         $files | % {
                 $ctcDestiny = Join-Path -Path $cachePath -ChildPath (Split-Path $_.name -Leaf)
                 if (Test-Path -Path $_.FullName) {
-                    Copy-Item -Path $_.FullName -Destination $ctcDestiny -Recurse -Force
+                    Copy-Item -Path $_.FullName -Destination $ctcDestiny -Recurse -Force -PassThru
                 }
             }
     }
-    # Copy items to cache and preserve items
-    foreach ($item in ($preserve + $CopyToCache)) {
-        $sourcePath = Join-Path -Path $renamedProfilePath -ChildPath $item
-        $destinationPath = Join-Path -Path $originalProfilePath -ChildPath $item
-        if (Test-Path -Path $sourcePath) {
-            Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force -PassThru
-        }
-    }
 
-    # Verify preserved items
-    $verificationPassed = $true
-    foreach ($item in $preserve) {
-        $preservedPath = Join-Path -Path $originalProfilePath -ChildPath $item
-        if (-not (Test-Path -Path $preservedPath)) {
-            $verificationPassed = $false
-            Write-Host "Verification failed for $item"
-            break
-        }
-    }
+   # Discover which folders to preserve
+   $actualPreserveFolders = @()
+   foreach ($item in $preserve) {
+       $fullPath = Join-Path -Path $renamedProfilePath -ChildPath $item
+       if (Test-Path -Path $fullPath) {
+           $actualPreserveFolders += $item
+       }
+   }
+
+   # Copy items to cache and preserve items
+   foreach ($item in ($CopyToCache + $actualPreserveFolders)) {
+       $sourcePath = Join-Path -Path $renamedProfilePath -ChildPath $item
+       $destinationPath = Join-Path -Path $originalProfilePath -ChildPath $item
+       if (Test-Path -Path $sourcePath) {
+           Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
+       }
+   }
+
+   # Verify preserved items
+   $verificationPassed = $true
+   foreach ($item in $actualPreserveFolders) {
+       $preservedPath = Join-Path -Path $originalProfilePath -ChildPath $item
+       if (-not (Test-Path -Path $preservedPath)) {
+           $verificationPassed = $false
+           Write-Host "Verification failed for $item"
+           break
+       }
+   }
 
     # Delete the renamed folder if verification passed
     if ($verificationPassed) {
