@@ -31,7 +31,14 @@
 
 
     # Rename the profile folder
-    Rename-Item -Path $originalProfilePath -NewName $renamedProfilePath -PassThru
+try {
+    Rename-Item -Path $originalProfilePath -NewName $renamedProfilePath
+}
+catch {
+    Write-Host "failed to Rename the profile folder"
+    break
+}
+
 
     # Ensure the cache directory exists
     if (-not (Test-Path -Path $cachePath)) {
@@ -59,13 +66,17 @@
            $actualPreserveFolders += $item
        }
    }
-
-   # Copy items to cache and preserve items
+   
+   Write-Host "----------------Copy items to cache and preserve items"
+   
    foreach ($item in ($CopyToCache + $actualPreserveFolders)) {
        $sourcePath = Join-Path -Path $renamedProfilePath -ChildPath $item
-       $destinationPath = Join-Path -Path $originalProfilePath -ChildPath $item
+       $destinationPath = $originalProfilePath
        if (Test-Path -Path $sourcePath) {
-           Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
+           Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force -PassThru
+       }
+       else {
+            Write-Host "failed to copy $item"
        }
    }
 
