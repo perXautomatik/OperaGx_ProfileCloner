@@ -1,3 +1,54 @@
+
+<#
+todo: predefined profile aliases, say "image" with bath image downloader crx
+or "organize" with bookmark deduplication to not need to dig up the path and specifying directly
+todo: just load all crxs in folder, use alias to filter.
+todo: psreadline completion from profile folder
+todo: specify cache path ( todays date, and profileName ) 
+todo: cache deduplication? ( autodele files occuring always? )
+todo: specifying folders to delete on closing, or files to keep
+
+#>
+
+ 
+#--allowlisted-extension-id ⊗	Adds the given extension ID to all the permission allowlists. ↪
+#--apps-gallery-download-url ⊗	The URL that the webstore APIs download extensions from. Note: the URL must contain one '%s' for the extension ID. ↪
+#--copy-to-download-dir ⊗	Copy user action data to download directory. ↪
+
+
+
+param(    
+  [Parameter(Mandatory=$true,
+             Position=0,
+             ParameterSetName="ParameterSetName",
+             ValueFromPipeline=$true,
+             ValueFromPipelineByPropertyName=$true,
+             HelpMessage="ProfileName")]
+  [Alias("childNode")]
+  [Alias("profileName")]
+  [ValidateNotNullOrEmpty()]
+  [string[]]
+  $profile_ = 'a_jap',  
+  $driveLet = 'E:',
+  [array]$excludedExtensions = @(".pam", ".zip", ".tar"),   
+
+  $copyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob','Sessions'),
+  $preserve =  @('Bookmarks'
+                ,'History'
+                ,'Bookmarks.bak'
+                ,'Web Data','Extension State'
+                ,'Cookies','Cache')
+  )
+  #--allow-profiles-outside-user-dir
+ <# 
+  @(
+  "$pwd\crx\VisualBookmarks_5_12_2_0.crx",
+  "$pwd\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+  "$pwd\crx\downloadhelper_8_2_0_20.crx"
+  ),
+#>
+
+
 import-module ".\lib\FileHelper.psm1"
 
 function SetFileExtensionThroughPiping()
@@ -200,24 +251,83 @@ function SetFileExtensionThroughPiping()
 
     }
 
-    $childNode = "a_mat" ;
-    $driveLet = 'E:';
-    $pathSufix = '\_side_profiles'
-    $scriptLoc = '\OperaLauncher'
-    [array]$excludedExtensions = @(".pam", ".zip", ".tar")   
+function EnviromentProperties {
+  [CmdletBinding()]
+  param (            
+      $launcherDirectory = "$pwd\OperaGXPortable\App\OperaGX",
+      $launcher = "$launcherDirectory\launcher.exe",
+      $pathSufix = '\_side_profiles',
+      $scriptLoc = '\OperaLauncher',
+      $profileFolder = "\profile\data\$pathSufix",
+      $dls = (Join-Path $pwd "downloads")
+  )
+
+  return @{
+    dls = $dls
+    launcher = $launcher
+    pathSufix = $pathSufix
+    scriptLoc = $scriptLoc
+    profileFolder = $profileFolder
+  }
+}
+function Default_LauncherOptions {
+  [CmdletBinding()]
+  param (            
+    $defaultP = 
+    '--disable-usage-statistics-question' +
+    ' --side-profile-minimal' +
+    ' --with-feature:side-profiles' +
+    ' --no-default-browser-check'
+  )
+
+  return  $defaultP  
+}
+function prepLauncherOptions {
+  [CmdletBinding()]
+  param (    
+    [alias("a")]$profile_,
+    [alias("extensions")][array] $crx,
+    $dls
+  )
     
-    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+  if(test-path $profile_) { $sp = $profile_} else { $sp = (join-path -path $profileFolder -child $profile_) }; $parax = '--side-profile-name=' +'"'+ $sp+'"'
+
+  $extz = get-childitem -path "$pwd\crx"; if(!$crx) { $extensionsToLoad = ($extz | ?{ $_.name -in $crx } ).fullname } else { $extensionsToLoad = ($extz ).fullname }
+  if($extensionsToLoad)
+  {
+    $parax = $parax + " --load-extension=" +'"'+ ($extensionsToLoad -join ',') +'"'
+  }
+
+  if($dls){
+    $parax = $parax + " --download.default_directory=" +'"'+ $dls +'"'
+  }
   
-    Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
+  $AllArgs = @($parax, (Default_LauncherOptions));  Write-Verbos $AllArgs
+  
+  return $AllArgs
+}
 
-    Invoke-Expression "Set-Location $driveLet\; .\OperaLauncher\opera.ps1 -a $childNode"
-$copyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob','Sessions')
-$preserve =  @('Bookmarks'
-,'History'
-,'Bookmarks.bak'
-,'Web Data','Extension State'
-,'Cookies','Cache')
+function Launch {
 
-    & .\OperaLauncher\PurgeProfile.ps1 -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode -CopyToCache $copyToCache -preserve $preserve
-    
-    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+  param(
+    $processOptions = @{
+      FilePath = (EnviromentProperties)
+      ArgumentList = (prepLauncherOptions)
+    }
+  )
+  ;  Write-Verbos $processOptions
+  
+  Start-Process @processOptions -Wait     
+}
+
+ 
+clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+
+Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
+Set-Location $driveLet\;
+Launch -a $childNode
+
+
+& .\OperaLauncher\PurgeProfile.ps1 -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode -CopyToCache $copyToCache -preserve $preserve
+
+clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
