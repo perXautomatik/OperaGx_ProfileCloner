@@ -104,17 +104,7 @@ if (Test-CommandExists 'trid') {
 	Set-Location $Location
 	$files = Get-ChildItem -File
 	$total = $files.Count
-		$current = 0
-		$current = 0
-		$current = 0
-
-        $current = 0
-
 	$current = 0
-		$current = 0
-
-        $current = 0
-
 	$shell = $Host.UI.RawUI
 	$shell.WindowTitle = "Progress 0% @ $Location"
 
@@ -152,17 +142,7 @@ if (Test-CommandExists 'trid') {
 	)
 	$tridOutput = trid $FileName
 
-	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	    # Get the highest percentage match and its corresponding extension
-        if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	    # Get the highest percentage match and its corresponding extension
 	if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	    # Get the highest percentage match and its corresponding extension
-        if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	    # Get the highest percentage match and its corresponding extension
 	    $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
 	    $extension = ($highestMatch.Groups[2].Value -split '/')[0]
 	    return $extension
@@ -171,92 +151,51 @@ if (Test-CommandExists 'trid') {
 	}
     }
 }
-# Function to move files based on their extension
-function Move-BasedOnExtension {
+
+# Function to set file extension through piping
+function Set-FileExtensionThroughPiping {
+    <#
+    .SYNOPSIS
+    Sets the file extension for files in the specified path through piping.
+
+    .DESCRIPTION
+    This function sets the file extension for each file in the provided path.
+    It uses piping to process multiple files and updates the console title with progress.
+
+    .PARAMETER Path
+    The path where the files are located.
+
+    .EXAMPLE
+    'C:\Files' | Set-FileExtensionThroughPiping
+    #>
     [CmdletBinding()]
     param (
-	[Parameter(Mandatory)]
-	[string]$OriginalFolderPath,
-	[Parameter(Mandatory)]
-	[string]$ExcludedExtension,
-	[Parameter(Mandatory)]
-	[string]$NewFolderPath
-    )
-    $exect = @($ExcludedExtension -split ",")
-    $unfiltered = Get-ChildItem -Path $OriginalFolderPath -File
-    $withExtensions = $unfiltered | Where-Object { $_.Extension }
-    $filteredToMove = $withExtensions | Where-Object { $_.Extension -notin $exect }
-    $zz = $filteredToMove.Length
-    $z = [bool]$zz -gt 0
-
-    if ($z) {
-	New-Item -ItemType Directory -Force -Path $NewFolderPath
-	$filteredToMove | ForEach-Object { Move-Item -Path $_.FullName -Destination $NewFolderPath -PassThru }
-	Write-Host ("Moved " + $filteredToMove.Length + " items to " + $NewFolderPath)
-    } else {
-	Write-Host "No files to move."
-    }
-}
-
-# Function to get session ID based on file creation times
-function Get-SessionId {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[string]$ChildPath
+	[Parameter(ValueFromPipeline = $true)]
+	[ValidateNotNullOrEmpty()]
+	[ValidateScript({
+	    if ($_.psobject.Methods.Match('ToString')) {
+		$true
+	    } else {
+		throw 'Cannot convert pipeline object to string!'
+	    }
+	})]
+	[string]$Path
     )
 
-    $internalItems = Get-ChildItem -Path $ChildPath
-    $firstFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
-    $lastFile = ($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
-    $q = $lastFile - $firstFile
+    Process {
+	Set-Location $Path
+	$files = Get-ChildItem -File
+	$total = $files.Count
+	$current = 0
+	$shell = $Host.UI.RawUI
+	$shell.WindowTitle = "Progress 0% @ $Path"
 
-    if ($q.Days -gt 0) {
-	$from = Get-Date -Date $firstFile -Format "yyMMdd_HHmmss"
-	$to = Get-Date -Date $lastFile -Format "yyMMdd_HHmmss"
-    }
-
-    $sessionId = Get-Date -Format "yyMMdd_HHmmss"
-    return $sessionId
-}
-
-# Function to clear cache
-function Clear-Cache {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[Alias("DriveLet")]
-	[string]$DriveLetter,
-	[Parameter(Mandatory)]
-	[string]$PathSuffix,
-	[Parameter(Mandatory)]
-	[Alias("ProfileName")]
-	[string]$ChildNode,
-	[Parameter(Mandatory)]
-	[string]$ExcludedExtensions
-    )
-
-    $sourceFold = Join-Path -Path $DriveLetter -ChildPath $PathSuffix
-    $profileLocation = Join-Path -Path $sourceFold -ChildPath $ChildNode
-    $sessionStorage = "$DriveLetter\sessionStorage"
-
-    Push-Location
-    Set-Location $sourceFold
-
-    $unfiltered = @(Get-ChildItem -Path $profileLocation -Depth 1 -Include "cache" | Get-ChildItem)
-    foreach ($item in $unfiltered) {
-	$childNode = $item.Parent.Parent
-	$sesStor = "$DriveLetter\sessionStorage\$childNode"
-	$sessionId = Get-SessionId -ChildPath $childNode
-	$newFol = Join-Path -Path $sesStor -ChildPath $sessionId
-
-	if (!(Test-Path -Path $newFol)) {
-	    $item.FullName | Set-FileExtensionThroughPiping
-	    Move-BasedOnExtension -OriginalFolderPath $item.FullName -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFol
-	} else {
-	    Write-Debug "Session already exists."
+	foreach ($file in $files) {
+	    $current++
+	    $percent = ($current / $total) * 100
+	    $shell.WindowTitle = "Progress $percent% @ $Path"
+	    Write-Progress -Activity "Setting file extensions in $Path" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+	    Set-FileExtensionIfNotMatch -FileName $file.Name
 	}
     }
-
-    Pop-Location
 }

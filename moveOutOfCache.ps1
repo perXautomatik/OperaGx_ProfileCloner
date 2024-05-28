@@ -33,5 +33,92 @@ function MoveOutFromCache {
                 % { 
                         Move-Item -Path $_.FullName -Destination $newFolderPath 
                     } } }
-cd E:\OperaLauncher
-MoveOutFromCache                    
+# Function to move files based on their extension
+function Move-BasedOnExtension {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$OriginalFolderPath,
+	[Parameter(Mandatory)]
+	[string]$ExcludedExtension,
+	[Parameter(Mandatory)]
+	[string]$NewFolderPath
+    )
+    $exect = @($ExcludedExtension -split ",")
+    $unfiltered = Get-ChildItem -Path $OriginalFolderPath -File
+    $withExtensions = $unfiltered | Where-Object { $_.Extension }
+    $filteredToMove = $withExtensions | Where-Object { $_.Extension -notin $exect }
+    $zz = $filteredToMove.Length
+    $z = [bool]$zz -gt 0
+
+    if ($z) {
+	New-Item -ItemType Directory -Force -Path $NewFolderPath
+	$filteredToMove | ForEach-Object { Move-Item -Path $_.FullName -Destination $NewFolderPath -PassThru }
+	Write-Host ("Moved " + $filteredToMove.Length + " items to " + $NewFolderPath)
+    } else {
+	Write-Host "No files to move."
+    }
+}
+
+# Function to get session ID based on file creation times
+function Get-SessionId {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ChildPath
+    )
+
+    $internalItems = Get-ChildItem -Path $ChildPath
+    $firstFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
+    $lastFile = ($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
+    $q = $lastFile - $firstFile
+
+    if ($q.Days -gt 0) {
+	$from = Get-Date -Date $firstFile -Format "yyMMdd_HHmmss"
+	$to = Get-Date -Date $lastFile -Format "yyMMdd_HHmmss"
+    }
+
+    $sessionId = Get-Date -Format "yyMMdd_HHmmss"
+    return $sessionId
+}
+
+# Function to clear cache
+function Clear-Cache {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[Alias("DriveLet")]
+	[string]$DriveLetter,
+	[Parameter(Mandatory)]
+	[string]$PathSuffix,
+	[Parameter(Mandatory)]
+	[Alias("ProfileName")]
+	[string]$ChildNode,
+	[Parameter(Mandatory)]
+	[string]$ExcludedExtensions
+    )
+
+    $sourceFold = Join-Path -Path $DriveLetter -ChildPath $PathSuffix
+    $profileLocation = Join-Path -Path $sourceFold -ChildPath $ChildNode
+    $sessionStorage = "$DriveLetter\sessionStorage"
+
+    Push-Location
+    Set-Location $sourceFold
+
+    $unfiltered = @(Get-ChildItem -Path $profileLocation -Depth 1 -Include "cache" | Get-ChildItem)
+    foreach ($item in $unfiltered) {
+	$childNode = $item.Parent.Parent
+	$sesStor =  Join-Path $sessionStorage $childNode
+	$sessionId = Get-SessionId -ChildPath $childNode
+	$newFol = Join-Path -Path $sesStor -ChildPath $sessionId
+
+	if (!(Test-Path -Path $newFol)) {
+	    $item.FullName | Set-FileExtensionThroughPiping
+	    Move-BasedOnExtension -OriginalFolderPath $item.FullName -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFol
+	} else {
+	    Write-Debug "Session already exists."
+	}
+    }
+
+    Pop-Location
+}

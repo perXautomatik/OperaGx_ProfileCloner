@@ -24,13 +24,14 @@ param (
     [Alias("ChildNode")]
     [string]$ProfileAlias = "a_jap",
     [string]$DriveLetter = 'E:',
-    [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
+    [string]$LauncherPath = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe"
 )
 
 # Begin block
 Begin {
     # Import required module
     Import-Module ".\lib\FileHelper.psm1"
+	Import-Module ".\moveOutOfCache.ps1"
 
     # Define additional variables
     $DownloadsPath = Join-Path $DriveLetter "downloads"
@@ -41,7 +42,6 @@ Begin {
     $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
     $ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-}
 
 # Function to prepare launcher options
 function Prepare-LauncherOptions {
@@ -89,6 +89,7 @@ function Invoke-LaunchProcess {
 
     Start-Process @ProcessOptions -Wait
 }
+}
 
 # Process block
 Process {
@@ -101,7 +102,7 @@ Process {
     $LauncherOptions = Prepare-LauncherOptions -Profile $ProfileAlias -Extensions $ExtensionsToLoad -DownloadsPath $DownloadsPath -DefaultParameters $DefaultParameters -ProfileFolderPath $ProfileFolderPath
 
     # Launch the Opera profile
-    Invoke-LaunchProcess -FilePath $LauncherPath -ArgumentList $LauncherOptions
+    Invoke-Expression "Invoke-LaunchProcess -FilePath $LauncherPath -ArgumentList $LauncherOptions"
 }
 
 # End block
