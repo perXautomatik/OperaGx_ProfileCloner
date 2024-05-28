@@ -2,18 +2,18 @@
 function Test-CommandExists {
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory)]
-        [string]$Command
+	[Parameter(Mandatory)]
+	[string]$Command
     )
     $oldErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'stop'
     try {
-        Get-Command $Command | Out-Null
-        return $true
+	Get-Command $Command | Out-Null
+	return $true
     } catch {
-        return $false
+	return $false
     } finally {
-        $ErrorActionPreference = $oldErrorActionPreference
+	$ErrorActionPreference = $oldErrorActionPreference
     }
 }
 
@@ -21,8 +21,8 @@ function Test-CommandExists {
 function Touch {
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory)]
-        [string]$File
+	[Parameter(Mandatory)]
+	[string]$File
     )
     "" | Out-File $File -Encoding ASCII
 }
@@ -31,12 +31,12 @@ function Touch {
 function Split-FileByLineNr {
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory)]
-        [string]$PathName,
-        [Parameter(Mandatory)]
-        [string]$OutputFilenamePattern,
-        [Parameter(Mandatory)]
-        [int]$LineLimit
+	[Parameter(Mandatory)]
+	[string]$PathName,
+	[Parameter(Mandatory)]
+	[string]$OutputFilenamePattern,
+	[Parameter(Mandatory)]
+	[int]$LineLimit
     )
     $input = Get-Content -Path $PathName
     $line = 0
@@ -44,16 +44,16 @@ function Split-FileByLineNr {
     $path = 0
     $start = 0
     while ($line -le $input.Length) {
-        if ($i -eq $LineLimit -Or $line -eq $input.Length) {
-            $path++
-            $pathname = "$OutputFilenamePattern$path.csv"
-            $input[$start..($line - 1)] | Out-File $pathname -Force
-            $start = $line
-            $i = 0
-            Write-Host "$pathname"
-        }
-        $i++
-        $line++
+	if ($i -eq $LineLimit -Or $line -eq $input.Length) {
+	    $path++
+	    $pathname = "$OutputFilenamePattern$path.csv"
+	    $input[$start..($line - 1)] | Out-File $pathname -Force
+	    $start = $line
+	    $i = 0
+	    Write-Host "$pathname"
+	}
+	$i++
+	$line++
     }
 }
 
@@ -61,10 +61,10 @@ function Split-FileByLineNr {
 function Split-FileByMatch {
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory)]
-        [string]$PathName,
-        [Parameter(Mandatory)]
-        [string]$Regex
+	[Parameter(Mandatory)]
+	[string]$PathName,
+	[Parameter(Mandatory)]
+	[string]$Regex
     )
     $ext = $PathName | Split-Path -Extension
     $parent = $PathName | Split-Path -Parent
@@ -79,16 +79,16 @@ function Split-FileByMatch {
     $occurence = 0
 
     while ($line -le $inputx.Length) {
-        if ($i -eq ([int]$LineLimit[$occurence].LineNumber - 1) -Or $line -eq $inputx.Length) {
-            $currentName = $names[$occurence]
-            $pathname = Join-Path -Path $parent -ChildPath "$OriginalName-$currentName$ext"
-            $u = ([int]$start[$occurence].LineNumber - 1)
-            $inputx[$u..($line - 1)] | Out-File $pathname
-            $occurence++
-            Write-Host "$u..($line - 1) $pathname"
-        }
-        $i++
-        $line++
+	if ($i -eq ([int]$LineLimit[$occurence].LineNumber - 1) -Or $line -eq $inputx.Length) {
+	    $currentName = $names[$occurence]
+	    $pathname = Join-Path -Path $parent -ChildPath "$OriginalName-$currentName$ext"
+	    $u = ([int]$start[$occurence].LineNumber - 1)
+	    $inputx[$u..($line - 1)] | Out-File $pathname
+	    $occurence++
+	    Write-Host "$u..($line - 1) $pathname"
+	}
+	$i++
+	$line++
     }
 }
 
@@ -96,209 +96,167 @@ function Split-FileByMatch {
 if (Test-CommandExists 'trid') {
     # Function to set file extension based on 'trid' command output
     function Set-FileExtension {
-        [CmdletBinding()]
-        Param (
-            [Parameter(Mandatory)]
-            [string]$Location
-        )
-        Set-Location $Location
-        $files = Get-ChildItem -File
-		$total = $files.Count
-		$total = $files.Count
-
-		# Initialize a counter for the current file
-        $total = $files.Count
-
-		# Initialize a counter for the current file
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$Location
+	)
+	Set-Location $Location
+	$files = Get-ChildItem -File
+	$total = $files.Count
+		$current = 0
 		$current = 0
 		$current = 0
 
         $current = 0
 
-        $shell = $Host.UI.RawUI
-        $shell.WindowTitle = "Progress 0% @ $Location"
+	$current = 0
+		$current = 0
 
-        foreach ($file in $files) {
-            $current++
-            $percent = ($current / $total) * 100
-            $shell.WindowTitle = "Progress $percent% @ $Location"
-            Write-Progress -Activity "Setting file extensions in $Location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-            Set-FileExtensionIfNotMatch -FileName $file.Name
-        }
+        $current = 0
+
+	$shell = $Host.UI.RawUI
+	$shell.WindowTitle = "Progress 0% @ $Location"
+
+	foreach ($file in $files) {
+	    $current++
+	    $percent = ($current / $total) * 100
+	    $shell.WindowTitle = "Progress $percent% @ $Location"
+	    Write-Progress -Activity "Setting file extensions in $Location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+	    Set-FileExtensionIfNotMatch -FileName $file.Name
+	}
     }
 
     # Helper function to set file extension if it does not match the expected one
     function Set-FileExtensionIfNotMatch {
-        [CmdletBinding()]
-        Param (
-            [Parameter(Mandatory)]
-            [string]$FileName
-        )
-        $currentExtension = [System.IO.Path]::GetExtension($FileName)
-        $expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+	$currentExtension = [System.IO.Path]::GetExtension($FileName)
+	$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
 
-        if ($currentExtension -ne $expectedExtension) {
-            Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
-            Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
-        }
+	if ($currentExtension -ne $expectedExtension) {
+	    Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+	    Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
+	}
     }
 
     # Helper function to get file extension from 'trid' command output
     function Get-FileExtensionFromTrid {
-        [CmdletBinding()]
-        Param (
-            [Parameter(Mandatory)]
-            [string]$FileName
-        )
-        $tridOutput = trid $FileName
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+	$tridOutput = trid $FileName
 
+	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	    # Get the highest percentage match and its corresponding extension
         if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	    # Get the highest percentage match and its corresponding extension
-            $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
-            $extension = ($highestMatch.Groups[2].Value -split '/')[0]
-            return $extension
-        } else {
-            return ""
-        }
+	if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+	    # Get the highest percentage match and its corresponding extension
+        if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+	    # Get the highest percentage match and its corresponding extension
+	    $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
+	    $extension = ($highestMatch.Groups[2].Value -split '/')[0]
+	    return $extension
+	} else {
+	    return ""
+	}
     }
 }
-
-# Function to set file extension through piping
-function Set-FileExtensionThroughPiping {
-    <#
-    .SYNOPSIS
-    Sets the file extension for files in the specified path through piping.
-
-    .DESCRIPTION
-    This function sets the file extension for each file in the provided path.
-    It uses piping to process multiple files and updates the console title with progress.
-
-    .PARAMETER Path
-    The path where the files are located.
-
-    .EXAMPLE
-    'C:\Files' | Set-FileExtensionThroughPiping
-    #>
+# Function to move files based on their extension
+function Move-BasedOnExtension {
     [CmdletBinding()]
     param (
-        [Parameter(ValueFromPipeline = $true)]
-        [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            if ($_.psobject.Methods.Match('ToString')) {
-                $true
-            } else {
-                throw 'Cannot convert pipeline object to string!'
-            }
-        })]
-        [string]$Path
+	[Parameter(Mandatory)]
+	[string]$OriginalFolderPath,
+	[Parameter(Mandatory)]
+	[string]$ExcludedExtension,
+	[Parameter(Mandatory)]
+	[string]$NewFolderPath
     )
+    $exect = @($ExcludedExtension -split ",")
+    $unfiltered = Get-ChildItem -Path $OriginalFolderPath -File
+    $withExtensions = $unfiltered | Where-Object { $_.Extension }
+    $filteredToMove = $withExtensions | Where-Object { $_.Extension -notin $exect }
+    $zz = $filteredToMove.Length
+    $z = [bool]$zz -gt 0
 
-    Process {
-        Set-Location $Path
-        $files = Get-ChildItem -File
-        $total = $files.Count
-        $current = 0
-        $shell = $Host.UI.RawUI
-        $shell.WindowTitle = "Progress 0% @ $Path"
-
-        foreach ($file in $files) {
-            $current++
-            $percent = ($current / $total) * 100
-            $shell.WindowTitle = "Progress $percent% @ $Path"
-            Write-Progress -Activity "Setting file extensions in $Path" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-            Set-FileExtensionIfNotMatch -FileName $file.Name
-        }
+    if ($z) {
+	New-Item -ItemType Directory -Force -Path $NewFolderPath
+	$filteredToMove | ForEach-Object { Move-Item -Path $_.FullName -Destination $NewFolderPath -PassThru }
+	Write-Host ("Moved " + $filteredToMove.Length + " items to " + $NewFolderPath)
+    } else {
+	Write-Host "No files to move."
     }
 }
 
+# Function to get session ID based on file creation times
+function Get-SessionId {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ChildPath
+    )
 
-    function moveBasedONextnesion() {
-	[CmdletBinding()]
-	param (
-	    $originalFolderPath,
-	    $excludedExtension,
-	    $newFolderPath
-	)
-	    $exect = @($excludedExtension -split "," );
+    $internalItems = Get-ChildItem -Path $ChildPath
+    $firstFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
+    $lastFile = ($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
+    $q = $lastFile - $firstFile
 
-	    $unfiltered = (Get-ChildItem -Path $originalFolderPath -File)
-	    $withExtensions = $unfiltered | ? { $_.Extension };
-	    $filteredToMove = $withExtensions | ? { $_.Extension -notin $exect };
-	    $zz = $filteredToMove.Length;
-	    $z = [bool]$zz -gt 0;
-
-	    if ( $z ){
-
-
-		New-Item -ItemType Directory -Force -Path $newFolderPath ;
-
-		$filteredToMove | % {  Move-Item -Path $_.FullName -Destination $newFolderPath -PassThru  }
-		Write-Host (""+($filteredToMove.Length)+ "/" + ($newFolderPath | get-childitem).length)
-	    }
-	    else {
-		Write-Host "no cache"
-	    }
+    if ($q.Days -gt 0) {
+	$from = Get-Date -Date $firstFile -Format "yyMMdd_HHmmss"
+	$to = Get-Date -Date $lastFile -Format "yyMMdd_HHmmss"
     }
 
-    function get-sesId {
-	param(
-	    $childPath
-	)
+    $sessionId = Get-Date -Format "yyMMdd_HHmmss"
+    return $sessionId
+}
 
-	$internalItems = ($childPath | get-childitem );
-	$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
-	$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
-	$q = $lastFile -$firtFile
+# Function to clear cache
+function Clear-Cache {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[Alias("DriveLet")]
+	[string]$DriveLetter,
+	[Parameter(Mandatory)]
+	[string]$PathSuffix,
+	[Parameter(Mandatory)]
+	[Alias("ProfileName")]
+	[string]$ChildNode,
+	[Parameter(Mandatory)]
+	[string]$ExcludedExtensions
+    )
 
-	if($q.Days -gt 0)
-	{
-	    $from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
-	    $to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
+    $sourceFold = Join-Path -Path $DriveLetter -ChildPath $PathSuffix
+    $profileLocation = Join-Path -Path $sourceFold -ChildPath $ChildNode
+    $sessionStorage = "$DriveLetter\sessionStorage"
+
+    Push-Location
+    Set-Location $sourceFold
+
+    $unfiltered = @(Get-ChildItem -Path $profileLocation -Depth 1 -Include "cache" | Get-ChildItem)
+    foreach ($item in $unfiltered) {
+	$childNode = $item.Parent.Parent
+	$sesStor = "$DriveLetter\sessionStorage\$childNode"
+	$sessionId = Get-SessionId -ChildPath $childNode
+	$newFol = Join-Path -Path $sesStor -ChildPath $sessionId
+
+	if (!(Test-Path -Path $newFol)) {
+	    $item.FullName | Set-FileExtensionThroughPiping
+	    Move-BasedOnExtension -OriginalFolderPath $item.FullName -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFol
+	} else {
+	    Write-Debug "Session already exists."
 	}
-
-	$sessionId = (Get-Date -Format "yyMMdd_HHmmss");
-	return $sessionId;
     }
 
-    function clear-Cache() {
-
-	[CmdletBinding()]
-	param (
-	    [alias("driveLet")]$driveLetter = "E:",
-	    $pathSufix = "\_side_profiles",
-	    [alias("profileName")]$childNode, # = "a_vin"
-	    $sourceFold = (join-path $driveLet $pathSufix),
-	    $profileLocation = (join-path $sourceFold $childNode),
-	    $sessionStorage = "$driveLetter\sessionStorage",
-	    $exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-	)
-
-	Push-Location;
-	cd $sourceFold;
-
-	$unfiltered = @((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) ;
-	$unfiltered | % {
-	    $childNode = $_.parent.parent
-
-	    $sesStor = "$driveLetter\sessionStorage\$childNode"
-
-	    $sessionId = get-sesId -childPath $childNode;
-
-	    $newFol = (Join-Path ($sesStor) $sessionId)
-	    if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) {
-		Write-Debug "already exsisting"
-	    }
-	    else
-	    {
-		( $_.fullname | Set-FileExtensionThroughPiping ) ;
-		moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
-	    }
-
-	}
-
-	Pop-Location;
-
-    }
+    Pop-Location
+}
