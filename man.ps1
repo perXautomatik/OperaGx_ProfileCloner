@@ -1,136 +1,114 @@
 
+# Define global parameters
 param(
-  $a = 'a_jap',
-  $profileFolder = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
-  $rename = $true,
-  $operaType = "portable",
-  $profileInProfileFolder = $true,
-  $RenameAfter = !($a -match 'a_') -or $rename,
-  $cloneIfempty = $true,
-  $dls = (Join-Path $pwd "downloads"),
-  $defaultP =
+    [string]$profileAlias = 'a_jap',
+    [string]$profileFolderPath = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
+    [bool]$renameProfile = $true,
+    [string]$operaType = "portable",
+    [bool]$isProfileInProfileFolder = $true,
+    [bool]$shouldRenameAfter = !($profileAlias -match 'a_') -or $renameProfile,
+    [bool]$shouldCloneIfEmpty = $true,
+    [string]$downloadsPath = (Join-Path $pwd "downloads"),
+    [string]$defaultParameters =
 		'--disable-usage-statistics-question' +
 		' --side-profile-minimal' +
 		' --with-feature:side-profiles' +
 		' --no-default-browser-check' +
 		" --download.default_directory=$dls"
 		,
-		$extensionsToLoad = (get-childitem -path "$pwd\crx").fullname
-  , $launcher = ".\OperaGXPortable\App\OperaGX\launcher.exe"
-  )
+    [string[]]$extensionsToLoad = (Get-ChildItem -Path "$pwd\crx").FullName,
+    [string]$launcherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
+)
 
-import-module ".\lib\FileHelper.psm1"
+# Import required module
+Import-Module ".\lib\FileHelper.psm1"
 
-<#
-todo: predefined profile aliases, say "image" with bath image downloader crx
-or "organize" with bookmark deduplication to not need to dig up the path and specifying directly
-todo: just load all crxs in folder, use alias to filter.
-todo: psreadline completion from profile folder
-todo: specify cache path ( todays date, and profileName )
-todo: cache deduplication? ( autodele files occuring always? )
-todo: specifying folders to delete on closing, or files to keep
+# Function to launch Opera with a specified profile
+function Launch-OperaProfile {
+    <#
+    .SYNOPSIS
+    Launches Opera browser with the specified profile.
 
-#>
+    .DESCRIPTION
+    This function starts the Opera browser with the given profile and extensions.
 
+    .PARAMETER ProfileAlias
+    The alias of the profile to launch.
 
-#--allowlisted-extension-id ?	Adds the given extension ID to all the permission allowlists. ?
-#--apps-gallery-download-url ?	The URL that the webstore APIs download extensions from. Note: the URL must contain one '%s' for the extension ID. ?
-#--copy-to-download-dir ?	Copy user action data to download directory. ?
+    .PARAMETER Extensions
+    An array of extensions to load with the profile.
 
+    .EXAMPLE
+    Launch-OperaProfile -ProfileAlias 'a_jap' -Extensions $extensionsToLoad
+    #>
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ProfileAlias,
+	[Parameter()]
+	[string[]]$Extensions
+    )
 
- <#
-  @(
-  "$pwd\crx\VisualBookmarks_5_12_2_0.crx",
-  "$pwd\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-  "$pwd\crx\downloadhelper_8_2_0_20.crx"
-  ),
-#>
-
-
-function SetFileExtensionThroughPiping()
-	{
-	[CmdletBinding()]
-	param (
-	    [Parameter(ValueFromPipeline = $true)]
-	    [ValidateNotNullOrEmpty()]
-	    [ValidateScript({
-		if($_.psobject.Methods.Match.('ToString'))
-		{
-		    $true
-		}
-		else
-		{
-		    throw 'Can''t convert pipeline object to string!'
-		}
-	    })]
-	    $parmPath
-	)
-
-
-		set-location ($parmPath);
-		$location = $parmPath # Get the list of files in the current directory
-		$files = Get-ChildItem -File
-
-		# Get the total number of files
-		$total = $files.Count
-
-		# Initialize unfiltered counter for the current file
-		$current = 0
-
-	$shell = $Host.UI.RawUI
-
-
-	$shell.WindowTitle= "Progress 0% @ $($location)"
-
-
-		$files | % {
-		$file = $_
-		  $current++
-
-		  # Calculate the percentage of completion
-		  $percent = ($current / $total) * 100
-
-		  # Change the console title
-		  $shell.WindowTitle  = "Progress $($percent)% @ $($location)"
-
-		  # Write unfiltered progress message with unfiltered progress bar
-		  Write-Progress -Activity "Setting file extensions in $location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-
-		  # Set the file extension if it does not match the one from trid
-		  Set-FileExtensionIfNotMatch($file.Name)
-		}
-	}
-
-
-function Launch_opera_profile {
-
-    if($a)
-    {
-    $profile = $a
-    }
-    else
-    {
-	$profile = (join-path -path $profileFolder -child $a)
-    }
-
-    $param = '--side-profile-name=' +'"'+ $profile+'"' #--allow-profiles-outside-user-dir
-
-    if($extensionsToLoad)
-    {
-	$param = $param + " --load-extension=" +'"'+ ($extensionsToLoad -join ',') +'"'
-    }
-
-    $AllArgs = @($param, $defaultP); echo $AllArgs
-
+    $profilePath = if ($isProfileInProfileFolder) { Join-Path -Path $profileFolderPath -Child $ProfileAlias } else { $ProfileAlias }
+    $profileParam = '--side-profile-name="' + $profilePath + '"'
+    $extensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
+    $allArgs = @($profileParam, $defaultParameters, $extensionParam)
     $processOptions = @{
-	FilePath = $launcher
-	ArgumentList = $AllArgs
-    }; echo $processOptions
+	FilePath = $launcherPath
+	ArgumentList = $allArgs
+    }
 
     Start-Process @processOptions -Wait
-
-    return (($profileFolder+$a+"\Cache\Cache_Data") -replace '\\', '\')
+    return (($profileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
 }
+# Function to set file extension through piping
+function Set-FileExtensionThroughPiping {
+    <#
+    .SYNOPSIS
+    Sets the file extension for files in the specified path through piping.
+
+    .DESCRIPTION
+    This function sets the file extension for each file in the provided path.
+    It uses piping to process multiple files and updates the console title with progress.
+
+    .PARAMETER Path
+    The path where the files are located.
+
+    .EXAMPLE
+    'C:\Files' | Set-FileExtensionThroughPiping
+    #>
+    [CmdletBinding()]
+    param (
+	[Parameter(ValueFromPipeline = $true)]
+	[ValidateNotNullOrEmpty()]
+	[ValidateScript({
+	    if ($_.psobject.Methods.Match('ToString')) {
+		$true
+	    } else {
+		throw 'Cannot convert pipeline object to string!'
+	    }
+	})]
+	[string]$Path
+    )
+
+    Process {
+	Set-Location $Path
+	$files = Get-ChildItem -File
+	$total = $files.Count
+	$current = 0
+	$shell = $Host.UI.RawUI
+	$shell.WindowTitle = "Progress 0% @ $Path"
+
+	foreach ($file in $files) {
+	    $current++
+	    $percent = ($current / $total) * 100
+	    $shell.WindowTitle = "Progress $percent% @ $Path"
+	    Write-Progress -Activity "Setting file extensions in $Path" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+	    Set-FileExtensionIfNotMatch $file.Name
+	}
+    }
+}
+
 
     function moveBasedONextnesion() {
 	[CmdletBinding()]
@@ -210,7 +188,7 @@ function Launch_opera_profile {
 	    }
 	    else
 	    {
-		( $_.fullname | SetFileExtensionThroughPiping ) ;
+		( $_.fullname | Set-FileExtensionThroughPiping ) ;
 		moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
 	    }
 
@@ -230,7 +208,7 @@ function Launch_opera_profile {
 
     Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
 
-    Set-Location $driveLet\; Launch_opera_profile -a $childNode
+    Set-Location $driveLet\; Launch-OperaProfile -a $childNode
 $copyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob','Sessions')
 $preserve =  @('Bookmarks'
 ,'History'
