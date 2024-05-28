@@ -29,7 +29,6 @@ The path to the Opera launcher executable.
     param (
 	[alias("ChildNode")][string]$ProfileAlias = "a_jap",
     [string]$DriveLetter = 'E:',
-    
     [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
 )
 
@@ -39,20 +38,13 @@ Begin {
     Import-Module ".\lib\FileHelper.psm1"
 	[string]$DownloadsPath = (Join-Path $driveLetter "downloads")
     # Define additional variables
-    [string]$DefaultParameters =
-		'--disable-usage-statistics-question' +
-		' --side-profile-minimal' +
-		' --with-feature:side-profiles' +
-		' --no-default-browser-check' +
-		" --download.default_directory=$DownloadsPath"
-		,    
 	$exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
     $PathSuffix = '\_side_profiles'
     $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
 	[string[]]$ExtensionsToLoad = (Get-ChildItem -Path "$driveLetter\crx").FullName
 	[string]$ProfileFolderPath = "$driveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
-    
+
 
 # Function to launch Opera with a specified profile
 function Launch-OperaProfile {
@@ -77,20 +69,72 @@ function Launch-OperaProfile {
 	[Parameter(Mandatory)]
 	[string]$ProfileAlias,
 	[Parameter()]
-	[string[]]$Extensions, $DefaultParameters
+	[string[]]$Extensions,
+	[Parameter(Mandatory)]
+	[Parameter(Mandatory)]
+	[Parameter(Mandatory)]
+	$DefaultParameters,
+	[Parameter(Mandatory)]	
+	$DefaultParameters,
+	[Parameter(Mandatory)]	
+	[Parameter(Mandatory)]
+	$DefaultParameters,
+	[Parameter(Mandatory)]	
+	$DefaultParameters,
+	$ProfileFolderPath,
+	[Parameter(Mandatory)]	
+	$LauncherPath,
+	[Parameter(Mandatory)]	
+	$DownloadsPath
     )
+	
+	[string]$DefaultParameters =
+	'--disable-usage-statistics-question' +
+	' --side-profile-minimal' +
+	' --with-feature:side-profiles' +
+	' --no-default-browser-check' 
+	
 
-    $profilePath = if ($IsProfileInProfileFolder) { Join-Path -Path $ProfileFolderPath -Child $ProfileAlias } else { $ProfileAlias }
-    $profileParam = '--side-profile-name="' + $profilePath + '"'
-    $extensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
-    $allArgs = @($profileParam, $DefaultParameters, $extensionParam)
-    $processOptions = @{
-	FilePath = $LauncherPath
-	ArgumentList = $allArgs
-    }
+function prepLauncherOptions {
+  [CmdletBinding()]
+  param (
+    [alias("a")]$profile_,
+    [alias("extensions")][array] $crx,
+    $dls, $DefaultParameters
+  )
+
+  if(test-path $profile_) { $sp = $profile_} else { $sp = (join-path -path $profileFolder -child $profile_) }; $parax = '--side-profile-name=' +'"'+ $sp+'"'
+
+  $extz = get-childitem -path "$pwd\crx"; if(!$crx) { $extensionsToLoad = ($extz | ?{ $_.name -in $crx } ).fullname } else { $extensionsToLoad = ($extz ).fullname }
+  if($extensionsToLoad)
+  {
+    $parax = $parax + " --load-extension=" +'"'+ ($extensionsToLoad -join ',') +'"'
+  }
+
+  if($dls){
+    $parax = $parax + " --download.default_directory=" +'"'+ $dls +'"'
+  }
+
+  $AllArgs = @($parax, (Default_LauncherOptions));  Write-Verbos $AllArgs
+
+  return $AllArgs
+}
+
+function xLaunch {
+
+  param(
+    $processOptions
+  )
+  ;  Write-Verbos $processOptions
 
     Start-Process @processOptions -Wait
-    Write-Verbose (($ProfileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
+}
+
+Set-Location $DriveLetter
+xLaunch @{
+	FilePath = $LauncherPath
+	ArgumentList = (prepLauncherOptions -profile_ $ProfileAlias -crx $Extensions -dls $DownloadsPath -DefaultParameters $DefaultParameters)
+}
 }
 
 }
@@ -103,15 +147,15 @@ Process {
     Write-Verbose "Invoking OperaLauncher with parameter $ProfileAlias on drive $DriveLetter"
 
     # Launch the Opera profile
-    Set-Location $DriveLetter
-    Launch-OperaProfile -ProfileAlias $ProfileAlias -Extensions $ExtensionsToLoad
+
+    Launch-OperaProfile -ProfileAlias $ProfileAlias -Extensions $ExtensionsToLoad -ProfileFolderPath $ProfileFolderPath -DefaultParameters $DefaultParameters -LauncherPath $LauncherPath
 }
 
 # End block
 End {
     # Purge profile and manage cache
-    & $pwd\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode -CopyToCache $CopyToCache -Preserve $Preserve
+    & $pwd\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -CopyToCache $CopyToCache -Preserve $Preserve
 
     # Clear cache after profile purge
-    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
+    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtension $exc
 }
