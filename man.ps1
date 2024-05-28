@@ -1,26 +1,58 @@
-# Define global parameters
-param(
-    [string]$ProfileAlias = 'a_jap',
-    [string]$ProfileFolderPath = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
-    [bool]$RenameProfile = $true,
-    [string]$OperaType = "portable",
-    [bool]$IsProfileInProfileFolder = $true,
-    [bool]$ShouldRenameAfter = !($ProfileAlias -match 'a_') -or $RenameProfile,
-    [bool]$ShouldCloneIfEmpty = $true,
-    [string]$DownloadsPath = (Join-Path $pwd "downloads"),
+<#
+.SYNOPSIS
+This script launches the Opera browser with a specified profile and manages the cache.
+
+.DESCRIPTION
+The script imports necessary modules, launches Opera with the given profile, and performs cache management tasks before and after the profile launch.
+
+.PARAMETER ProfileAlias
+The alias of the profile to launch.
+
+.PARAMETER ProfileFolderPath
+The path to the profile folder.
+
+.PARAMETER DownloadsPath
+The path to the downloads folder.
+
+.PARAMETER ExtensionsToLoad
+An array of extensions to load with the profile.
+
+.PARAMETER LauncherPath
+The path to the Opera launcher executable.
+
+.EXAMPLE
+.\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap'
+#>
+
+# Define parameters
+    [CmdletBinding()]
+    param (
+	[alias("ChildNode")][string]$ProfileAlias = "a_jap",
+    [string]$DriveLetter = 'E:',
+    
+    [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
+)
+
+# Begin block
+Begin {
+    # Import required module
+    Import-Module ".\lib\FileHelper.psm1"
+	[string]$DownloadsPath = (Join-Path $driveLetter "downloads")
+    # Define additional variables
     [string]$DefaultParameters =
 		'--disable-usage-statistics-question' +
 		' --side-profile-minimal' +
 		' --with-feature:side-profiles' +
 		' --no-default-browser-check' +
-		" --download.default_directory=$dls"
-		,
-    [string[]]$ExtensionsToLoad = (Get-ChildItem -Path "$pwd\crx").FullName,
-    [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
-)
-
-# Import required module
-Import-Module ".\lib\FileHelper.psm1"
+		" --download.default_directory=$DownloadsPath"
+		,    
+	$exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+    $PathSuffix = '\_side_profiles'
+    $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
+    $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
+	[string[]]$ExtensionsToLoad = (Get-ChildItem -Path "$driveLetter\crx").FullName
+	[string]$ProfileFolderPath = "$driveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
+    
 
 # Function to launch Opera with a specified profile
 function Launch-OperaProfile {
@@ -45,7 +77,7 @@ function Launch-OperaProfile {
 	[Parameter(Mandatory)]
 	[string]$ProfileAlias,
 	[Parameter()]
-	[string[]]$Extensions
+	[string[]]$Extensions, $DefaultParameters
     )
 
     $profilePath = if ($IsProfileInProfileFolder) { Join-Path -Path $ProfileFolderPath -Child $ProfileAlias } else { $ProfileAlias }
@@ -58,33 +90,28 @@ function Launch-OperaProfile {
     }
 
     Start-Process @processOptions -Wait
-    return (($ProfileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
+    Write-Verbose (($ProfileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
 }
 
-# Main script execution
-$ChildNode = "a_wif"
-$DriveLetter = 'E:'
-$PathSuffix = '\_side_profiles'
+}
 
-# Clear cache before launching the profile
-Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
+# Process block
+Process {
+    # Clear cache before launching the profile
+    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtension $exc
 
-Write-Verbose "Invoking OperaLauncher with parameter $ChildNode on drive $DriveLetter"
+    Write-Verbose "Invoking OperaLauncher with parameter $ProfileAlias on drive $DriveLetter"
 
-# Launch the Opera profile
-Set-Location $DriveLetter
-Launch-OperaProfile -ProfileAlias $ChildNode
+    # Launch the Opera profile
+    Set-Location $DriveLetter
+    Launch-OperaProfile -ProfileAlias $ProfileAlias -Extensions $ExtensionsToLoad
+}
 
-# Define paths for cache management
-$CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
-$Preserve =  @('Bookmarks'
-,'History'
-,'Bookmarks.bak'
-,'Web Data','Extension State'
-,'Cookies','Cache')
+# End block
+End {
+    # Purge profile and manage cache
+    & $pwd\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode -CopyToCache $CopyToCache -Preserve $Preserve
 
-# Purge profile and manage cache
-& .\OperaLauncher\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode -CopyToCache $CopyToCache -Preserve $Preserve
-
-# Clear cache after profile purge
-Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
+    # Clear cache after profile purge
+    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
+}
