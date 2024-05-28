@@ -8,14 +8,8 @@ The script imports necessary modules, launches Opera with the given profile, and
 .PARAMETER ProfileAlias
 The alias of the profile to launch.
 
-.PARAMETER ProfileFolderPath
-The path to the profile folder.
-
-.PARAMETER DownloadsPath
-The path to the downloads folder.
-
-.PARAMETER ExtensionsToLoad
-An array of extensions to load with the profile.
+.PARAMETER DriveLetter
+The drive letter where Opera is installed.
 
 .PARAMETER LauncherPath
 The path to the Opera launcher executable.
@@ -25,9 +19,10 @@ The path to the Opera launcher executable.
 #>
 
 # Define parameters
-    [CmdletBinding()]
-    param (
-	[alias("ChildNode")][string]$ProfileAlias = "a_jap",
+[CmdletBinding()]
+param (
+    [Alias("ChildNode")]
+    [string]$ProfileAlias = "a_jap",
     [string]$DriveLetter = 'E:',
     [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
 )
@@ -36,126 +31,84 @@ The path to the Opera launcher executable.
 Begin {
     # Import required module
     Import-Module ".\lib\FileHelper.psm1"
-	[string]$DownloadsPath = (Join-Path $driveLetter "downloads")
+
     # Define additional variables
-	$exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+    $DownloadsPath = Join-Path $DriveLetter "downloads"
+    $ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
+    $ProfileFolderPath = "$DriveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
+    $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
     $PathSuffix = '\_side_profiles'
     $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
-	[string[]]$ExtensionsToLoad = (Get-ChildItem -Path "$driveLetter\crx").FullName
-	[string]$ProfileFolderPath = "$driveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
+    $ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+}
 
-
-# Function to launch Opera with a specified profile
-function Launch-OperaProfile {
-    <#
-    .SYNOPSIS
-    Launches Opera browser with the specified profile.
-
-    .DESCRIPTION
-    This function starts the Opera browser with the given profile and extensions.
-
-    .PARAMETER ProfileAlias
-    The alias of the profile to launch.
-
-    .PARAMETER Extensions
-    An array of extensions to load with the profile.
-
-    .EXAMPLE
-    Launch-OperaProfile -ProfileAlias 'a_jap' -Extensions $ExtensionsToLoad
-    #>
+# Function to prepare launcher options
+function Prepare-LauncherOptions {
     [CmdletBinding()]
     param (
-	[Parameter(Mandatory)]
-	[string]$ProfileAlias,
-	[Parameter()]
-	[string[]]$Extensions,
-	[Parameter(Mandatory)]
-	[Parameter(Mandatory)]
-	[Parameter(Mandatory)]
-	$DefaultParameters,
-	[Parameter(Mandatory)]	
-	$DefaultParameters,
-	[Parameter(Mandatory)]	
-	[Parameter(Mandatory)]
-	$DefaultParameters,
-	[Parameter(Mandatory)]	
-	$DefaultParameters,
-	$ProfileFolderPath,
-	[Parameter(Mandatory)]	
-	$LauncherPath,
-	[Parameter(Mandatory)]	
-	$DownloadsPath
+        [Parameter(Mandatory)]
+        [string]$Profile,
+        [Parameter()]
+        [string[]]$Extensions,
+        [Parameter(Mandatory)]
+        [string]$DownloadsPath,
+        [Parameter(Mandatory)]
+        [string]$DefaultParameters,
+        [Parameter(Mandatory)]
+        [string]$ProfileFolderPath
     )
-	
-	[string]$DefaultParameters =
-	'--disable-usage-statistics-question' +
-	' --side-profile-minimal' +
-	' --with-feature:side-profiles' +
-	' --no-default-browser-check' 
-	
 
-function prepLauncherOptions {
-  [CmdletBinding()]
-  param (
-    [alias("a")]$profile_,
-    [alias("extensions")][array] $crx,
-    $dls, $DefaultParameters
-  )
+    $ProfilePath = if (Test-Path $Profile) { $Profile } else { Join-Path -Path $ProfileFolderPath -ChildPath $Profile }
+    $ProfileParam = '--side-profile-name="' + $ProfilePath + '"'
 
-  if(test-path $profile_) { $sp = $profile_} else { $sp = (join-path -path $profileFolder -child $profile_) }; $parax = '--side-profile-name=' +'"'+ $sp+'"'
+    $ExtensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
+    $DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"
 
-  $extz = get-childitem -path "$pwd\crx"; if(!$crx) { $extensionsToLoad = ($extz | ?{ $_.name -in $crx } ).fullname } else { $extensionsToLoad = ($extz ).fullname }
-  if($extensionsToLoad)
-  {
-    $parax = $parax + " --load-extension=" +'"'+ ($extensionsToLoad -join ',') +'"'
-  }
+    $AllArgs = @($ProfileParam, $ExtensionParam, $DownloadParam, $DefaultParameters)
+    Write-Verbose "Launcher arguments: $AllArgs"
 
-  if($dls){
-    $parax = $parax + " --download.default_directory=" +'"'+ $dls +'"'
-  }
-
-  $AllArgs = @($parax, (Default_LauncherOptions));  Write-Verbos $AllArgs
-
-  return $AllArgs
+    return $AllArgs
 }
 
-function xLaunch {
+# Function to launch the process
+function Invoke-LaunchProcess {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+        [Parameter(Mandatory)]
+        [string[]]$ArgumentList
+    )
 
-  param(
-    $processOptions
-  )
-  ;  Write-Verbos $processOptions
+    $ProcessOptions = @{
+        FilePath     = $FilePath
+        ArgumentList = $ArgumentList
+    }
+    Write-Verbose "Process options: $ProcessOptions"
 
-    Start-Process @processOptions -Wait
-}
-
-Set-Location $DriveLetter
-xLaunch @{
-	FilePath = $LauncherPath
-	ArgumentList = (prepLauncherOptions -profile_ $ProfileAlias -crx $Extensions -dls $DownloadsPath -DefaultParameters $DefaultParameters)
-}
-}
-
+    Start-Process @ProcessOptions -Wait
 }
 
 # Process block
 Process {
     # Clear cache before launching the profile
-    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtension $exc
+    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtensions $ExcludedExtensions
 
     Write-Verbose "Invoking OperaLauncher with parameter $ProfileAlias on drive $DriveLetter"
 
-    # Launch the Opera profile
+    # Prepare launcher options
+    $LauncherOptions = Prepare-LauncherOptions -Profile $ProfileAlias -Extensions $ExtensionsToLoad -DownloadsPath $DownloadsPath -DefaultParameters $DefaultParameters -ProfileFolderPath $ProfileFolderPath
 
-    Launch-OperaProfile -ProfileAlias $ProfileAlias -Extensions $ExtensionsToLoad -ProfileFolderPath $ProfileFolderPath -DefaultParameters $DefaultParameters -LauncherPath $LauncherPath
+    # Launch the Opera profile
+    Invoke-LaunchProcess -FilePath $LauncherPath -ArgumentList $LauncherOptions
 }
 
 # End block
 End {
     # Purge profile and manage cache
-    & $pwd\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -CopyToCache $CopyToCache -Preserve $Preserve
+    & "$PWD\PurgeProfile.ps1" -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -CopyToCache $CopyToCache -Preserve $Preserve
 
     # Clear cache after profile purge
-    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtension $exc
+    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtensions $ExcludedExtensions
 }
