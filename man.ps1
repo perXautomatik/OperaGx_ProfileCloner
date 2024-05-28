@@ -42,7 +42,7 @@ Begin {
     $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
     $ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-
+	
     # Determine which extensions to load based on the profile
     $ExtensionsToLoad = if ($ProfileExtensions[$ProfileAlias]) {
         $ProfileExtensions[$ProfileAlias]
@@ -70,8 +70,9 @@ function Prepare-LauncherOptions {
     $ProfileParam = '--side-profile-name="' + $ProfilePath + '"'
 
     $ExtensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
-    $DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"
-
+    if (Test-Path $DownloadsPath)
+	{$DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"}
+	
     $AllArgs = @($ProfileParam, $ExtensionParam, $DownloadParam, $DefaultParameters)
     Write-Verbose "Launcher arguments: $AllArgs"
 
@@ -101,12 +102,22 @@ function Invoke-LaunchProcess {
 # Process block
 Process {
     # Clear cache before launching the profile
-    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtensions $ExcludedExtensions
 
+	MoveOutFromCache @{    
+		ProfileName = $ProfileAlias;
+		DriveLetter = $DriveLetter;
+		ExcludedExtensions = $ExcludedExtensions
+	}
+	
     Write-Verbose "Invoking OperaLauncher with parameter $ProfileAlias on drive $DriveLetter"
 
     # Prepare launcher options
-    $LauncherOptions = Prepare-LauncherOptions -Profile $ProfileAlias -Extensions $ExtensionsToLoad -DownloadsPath $DownloadsPath -DefaultParameters $DefaultParameters -ProfileFolderPath $ProfileFolderPath
+    $LauncherOptions = Prepare-LauncherOptions 
+							-Profile $ProfileAlias 
+							-Extensions $ExtensionsToLoad 
+							-DownloadsPath $DownloadsPath 
+							-DefaultParameters $DefaultParameters 
+							-ProfileFolderPath $ProfileFolderPath
 
     # Launch the Opera profile
     Invoke-Expression "Invoke-LaunchProcess -FilePath $LauncherPath -ArgumentList $LauncherOptions"
@@ -118,5 +129,9 @@ End {
     & "$PWD\PurgeProfile.ps1" -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -CopyToCache $CopyToCache -Preserve $Preserve
 
     # Clear cache after profile purge
-    Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -ExcludedExtensions $ExcludedExtensions
+	MoveOutFromCache @{    
+		ProfileName = $ProfileAlias;
+		DriveLetter = $DriveLetter;
+		ExcludedExtensions = $ExcludedExtensions
+	}
 }
