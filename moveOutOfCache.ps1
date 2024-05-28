@@ -1,16 +1,17 @@
-# Function to move files out from cache and track them with checksums
+
+# Main function to move files out from cache
 function MoveOutFromCache {
     [CmdletBinding()]
     param (
 	[string]$ProfileName = "a_vin",
 	[string]$DriveLetter = "E:",
-	[string]$SessionStorage,
-	[string]$ProfileLocation,
 	[string]$CacheFolderName = "cache",
 	[string]$InnerCacheFolder = "cache_data",
 	[string[]]$ExcludedExtensions = @(".pam", ".zip", ".tar", ".gz", ".null", ".gpg", ".woff2", ".woff", ".bs", ".ini")
     )
 
+    $ProfileLocation = "$DriveLetter\_side_profiles\$ProfileName\"
+    $SessionStorage = "$DriveLetter\sessionStorage\$ProfileName"
     $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
     $newFolderPath = Join-Path -Path $SessionStorage -ChildPath $dateTime
     New-Item -ItemType Directory -Force -Path $newFolderPath
@@ -18,9 +19,6 @@ function MoveOutFromCache {
     $cachePath = Join-Path -Path $ProfileLocation -ChildPath $CacheFolderName
     $innerCachePath = Join-Path -Path $cachePath -ChildPath $InnerCacheFolder
     $filesInCache = Get-ChildItem -Path $innerCachePath -File
-
-    # Track files that are not moved
-    $checksumFile = Join-Path -Path $SessionStorage -ChildPath ".cache_checksums_$dateTime.txt"
     $filesNotMoved = @()
 
     foreach ($file in $filesInCache) {
@@ -32,11 +30,9 @@ function MoveOutFromCache {
 	}
     }
 
-    # Save the checksums of files not moved to a hidden file
-    $filesNotMoved | Out-File -FilePath $checksumFile -Force
-    $fileInfo = Get-Item -Path $checksumFile
-    $fileInfo.Attributes = 'Hidden'
+    Create-ChecksumFile -SessionStorage $SessionStorage -FilesNotMoved $filesNotMoved
 }
+
 function Move-BasedOnExtension {
     [CmdletBinding()]
     param (
@@ -104,36 +100,72 @@ function Clear-Cache {
     Push-Location
     Set-Location $sourceFold
 
-    # Check for the hidden checksum file
     $checksumFilePattern = ".cache_checksums_*.txt"
     $checksumFiles = Get-ChildItem -Path $sessionStorage -Filter $checksumFilePattern -Hidden -File
 
     foreach ($checksumFile in $checksumFiles) {
-	$previousChecksums = Get-Content -Path $checksumFile.FullName
-	$currentFiles = Get-ChildItem -Path $profileLocation -File
+	$filesChanged = Compare-Checksums -ChecksumFilePath $checksumFile.FullName -ProfileLocation $profileLocation
 
-	foreach ($file in $currentFiles) {
-	    $currentChecksum = Get-FileHash -Path $file.FullName -Algorithm MD5
-	    $previousEntry = $previousChecksums | Where-Object { $_ -match "^$($file.Name):" }
-
-	    if ($previousEntry -and ($previousEntry.Split(':')[1] -ne $currentChecksum.Hash)) {
-		# File has changed, run SetFileExtensionThroughPiping
-		$file.FullName | Set-FileExtensionThroughPiping
-	    }
+	foreach ($file in $filesChanged) {
+	    $file.FullName | Set-FileExtensionThroughPiping
 	}
 
-	# After processing, remove the checksum file
-	Remove-Item -Path $checksumFile.FullName -Force
-    }
+	$filesAfterPiping = Get-ChildItem -Path $profileLocation -File
+	$filesRenamed = Compare-Object -ReferenceObject $currentFiles -DifferenceObject $filesAfterPiping -Property Name | Where-Object { $_.SideIndicator -eq "=>" }
 
-    # Now proceed with moving files based on extension
-    $filesAfterPiping = Get-ChildItem -Path $profileLocation -File
-    $filesRenamed = Compare-Object -ReferenceObject $currentFiles -DifferenceObject $filesAfterPiping -Property Name | Where-Object { $_.SideIndicator -eq "=>" }
-
-    if ($filesRenamed) {
-	$newFolderPath = Join-Path -Path $sessionStorage -ChildPath (Get-Date -Format "yyyyMMdd_HHmmss")
-	Move-BasedOnExtension -OriginalFolderPath $profileLocation -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFolderPath
+	if ($filesRenamed) {
+	    $newFolderPath = Join-Path -Path $sessionStorage -ChildPath (Get-Date -Format "yyyyMMdd_HHmmss")
+	    Move-BasedOnExtension -OriginalFolderPath $profileLocation -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFolderPath
+	}
     }
 
     Pop-Location
 }
+
+# Function to create a checksum file for files not moved
+function Create-ChecksumFile {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$SessionStorage,
+	[Parameter(Mandatory)]
+	[string[]]$FilesNotMoved
+    )
+
+    $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
+    $checksumFile = Join-Path -Path $SessionStorage -ChildPath ".cache_checksums_$dateTime.txt"
+
+    $filesNotMoved | Out-File -FilePath $checksumFile -Force
+    $fileInfo = Get-Item -Path $checksumFile
+    $fileInfo.Attributes = 'Hidden'
+}
+
+# Function to compare current files with checksums and identify changes
+function Compare-Checksums {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ChecksumFilePath,
+	[Parameter(Mandatory)]
+	[string]$ProfileLocation
+    )
+
+    $previousChecksums = Get-Content -Path $ChecksumFilePath
+    $currentFiles = Get-ChildItem -Path $ProfileLocation -File
+    $filesChanged = @()
+
+    foreach ($file in $currentFiles) {
+	$currentChecksum = Get-FileHash -Path $file.FullName -Algorithm MD5
+	$previousEntry = $previousChecksums | Where-Object { $_ -match "^$($file.Name):" }
+
+	if ($previousEntry -and ($previousEntry.Split(':')[1] -ne $currentChecksum.Hash)) {
+	    $filesChanged += $file
+	}
+    }
+
+    Remove-Item -Path $ChecksumFilePath -Force
+    return $filesChanged
+}
+
+# Example of calling the main function
+MoveOutFromCache -ProfileName "a_vin" -DriveLetter "E:"
