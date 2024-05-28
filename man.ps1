@@ -24,24 +24,31 @@ param (
     [Alias("ChildNode")]
     [string]$ProfileAlias = "a_jap",
     [string]$DriveLetter = 'E:',
-    [string]$LauncherPath = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe"
+    [string]$LauncherPath = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
+    [hashtable]$ProfileExtensions = @{}
 )
 
 # Begin block
 Begin {
     # Import required module
     Import-Module ".\lib\FileHelper.psm1"
-	Import-Module ".\moveOutOfCache.ps1"
+    Import-Module ".\moveOutOfCache.ps1"
 
     # Define additional variables
     $DownloadsPath = Join-Path $DriveLetter "downloads"
-    $ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
     $ProfileFolderPath = "$DriveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
     $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
     $PathSuffix = '\_side_profiles'
     $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
     $ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+
+    # Determine which extensions to load based on the profile
+    $ExtensionsToLoad = if ($ProfileExtensions[$ProfileAlias]) {
+        $ProfileExtensions[$ProfileAlias]
+    } else {
+        (Get-ChildItem -Path "$DriveLetter\crx").FullName
+    }
 
 # Function to prepare launcher options
 function Prepare-LauncherOptions {
