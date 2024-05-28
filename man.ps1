@@ -1,23 +1,22 @@
-
 # Define global parameters
 param(
-    [string]$profileAlias = 'a_jap',
-    [string]$profileFolderPath = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
-    [bool]$renameProfile = $true,
-    [string]$operaType = "portable",
-    [bool]$isProfileInProfileFolder = $true,
-    [bool]$shouldRenameAfter = !($profileAlias -match 'a_') -or $renameProfile,
-    [bool]$shouldCloneIfEmpty = $true,
-    [string]$downloadsPath = (Join-Path $pwd "downloads"),
-    [string]$defaultParameters =
+    [string]$ProfileAlias = 'a_jap',
+    [string]$ProfileFolderPath = "$pwd\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\",
+    [bool]$RenameProfile = $true,
+    [string]$OperaType = "portable",
+    [bool]$IsProfileInProfileFolder = $true,
+    [bool]$ShouldRenameAfter = !($ProfileAlias -match 'a_') -or $RenameProfile,
+    [bool]$ShouldCloneIfEmpty = $true,
+    [string]$DownloadsPath = (Join-Path $pwd "downloads"),
+    [string]$DefaultParameters =
 		'--disable-usage-statistics-question' +
 		' --side-profile-minimal' +
 		' --with-feature:side-profiles' +
 		' --no-default-browser-check' +
 		" --download.default_directory=$dls"
 		,
-    [string[]]$extensionsToLoad = (Get-ChildItem -Path "$pwd\crx").FullName,
-    [string]$launcherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
+    [string[]]$ExtensionsToLoad = (Get-ChildItem -Path "$pwd\crx").FullName,
+    [string]$LauncherPath = ".\OperaGXPortable\App\OperaGX\launcher.exe"
 )
 
 # Import required module
@@ -39,7 +38,7 @@ function Launch-OperaProfile {
     An array of extensions to load with the profile.
 
     .EXAMPLE
-    Launch-OperaProfile -ProfileAlias 'a_jap' -Extensions $extensionsToLoad
+    Launch-OperaProfile -ProfileAlias 'a_jap' -Extensions $ExtensionsToLoad
     #>
     [CmdletBinding()]
     param (
@@ -49,38 +48,43 @@ function Launch-OperaProfile {
 	[string[]]$Extensions
     )
 
-    $profilePath = if ($isProfileInProfileFolder) { Join-Path -Path $profileFolderPath -Child $ProfileAlias } else { $ProfileAlias }
+    $profilePath = if ($IsProfileInProfileFolder) { Join-Path -Path $ProfileFolderPath -Child $ProfileAlias } else { $ProfileAlias }
     $profileParam = '--side-profile-name="' + $profilePath + '"'
     $extensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
-    $allArgs = @($profileParam, $defaultParameters, $extensionParam)
+    $allArgs = @($profileParam, $DefaultParameters, $extensionParam)
     $processOptions = @{
-	FilePath = $launcherPath
+	FilePath = $LauncherPath
 	ArgumentList = $allArgs
     }
 
     Start-Process @processOptions -Wait
-    return (($profileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
+    return (($ProfileFolderPath + $ProfileAlias + "\Cache\Cache_Data") -replace '\\', '\')
 }
 
+# Main script execution
+$ChildNode = "a_wif"
+$DriveLetter = 'E:'
+$PathSuffix = '\_side_profiles'
 
-    $childNode = "a_wif" ;
-    $driveLet = 'E:';
-    $pathSufix = '\_side_profiles'
-    $scriptLoc = '\OperaLauncher'
-    [array]$excludedExtensions = @(".pam", ".zip", ".tar")
+# Clear cache before launching the profile
+Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
 
-    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+Write-Verbose "Invoking OperaLauncher with parameter $ChildNode on drive $DriveLetter"
 
-    Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
+# Launch the Opera profile
+Set-Location $DriveLetter
+Launch-OperaProfile -ProfileAlias $ChildNode
 
-    Set-Location $driveLet\; Launch-OperaProfile -a $childNode
-$copyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob','Sessions')
-$preserve =  @('Bookmarks'
+# Define paths for cache management
+$CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
+$Preserve =  @('Bookmarks'
 ,'History'
 ,'Bookmarks.bak'
 ,'Web Data','Extension State'
 ,'Cookies','Cache')
 
-    & .\OperaLauncher\PurgeProfile.ps1 -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode -CopyToCache $copyToCache -preserve $preserve
+# Purge profile and manage cache
+& .\OperaLauncher\PurgeProfile.ps1 -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode -CopyToCache $CopyToCache -Preserve $Preserve
 
-    clearCache -driveLet $driveLet -pathSufix $pathSufix -childNode $childNode
+# Clear cache after profile purge
+Clear-Cache -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ChildNode
