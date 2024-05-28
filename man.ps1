@@ -14,8 +14,11 @@ The drive letter where Opera is installed.
 .PARAMETER LauncherPath
 The path to the Opera launcher executable.
 
+.PARAMETER ProfileSpecific
+A hashtable containing specific configurations for profiles.
+
 .EXAMPLE
-.\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap'
+.\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap' -ProfileSpecific @{ 'a_jap' = @{ 'Extensions' = @('path\to\extension1', 'path\to\extension2'); 'DownloadsPath' = 'E:\Downloads' } }
 #>
 
 # Define parameters
@@ -25,30 +28,34 @@ param (
     [string]$ProfileAlias = "a_jap",
     [string]$DriveLetter = 'E:',
     [string]$LauncherPath = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
-    [hashtable]$ProfileExtensions = @{}
+    [hashtable]$ProfileSpecific = @{}
 )
 
 # Begin block
 Begin {
-    # Import required module
+    # Import required modules
     Import-Module ".\lib\FileHelper.psm1"
     Import-Module ".\moveOutOfCache.ps1"
 
-    # Define additional variables
-    $DownloadsPath = Join-Path $DriveLetter "downloads"
-    $ProfileFolderPath = "$DriveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
+    # Set default values
+    $DefaultDownloadsPath = Join-Path $DriveLetter "downloads"
+    $DefaultProfileFolderPath = "$DriveLetter\OperaGXPortable\App\OperaGX\profile\data\_side_profiles\"
     $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
-    $PathSuffix = '\_side_profiles'
-    $CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
-    $Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
-    $ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-	
-    # Determine which extensions to load based on the profile
-    $ExtensionsToLoad = if ($ProfileExtensions[$ProfileAlias]) {
-        $ProfileExtensions[$ProfileAlias]
-    } else {
-        (Get-ChildItem -Path "$DriveLetter\crx").FullName
-    }
+    $DefaultPathSuffix = '\_side_profiles'
+    $DefaultCopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
+    $DefaultPreserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache')
+    $DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+
+    # Override defaults with specific profile configurations if provided
+    $ProfileConfig = $ProfileSpecific[$ProfileAlias]
+    $DownloadsPath = $ProfileConfig['DownloadsPath'] -or $DefaultDownloadsPath
+    $ProfileFolderPath = $ProfileConfig['ProfileFolderPath'] -or $DefaultProfileFolderPath
+    $Parameters = $ProfileConfig['Parameters'] -or $DefaultParameters
+    $PathSuffix = $ProfileConfig['PathSuffix'] -or $DefaultPathSuffix
+    $CopyToCache = $ProfileConfig['CopyToCache'] -or $DefaultCopyToCache
+    $Preserve = $ProfileConfig['Preserve'] -or $DefaultPreserve
+    $ExcludedExtensions = $ProfileConfig['ExcludedExtensions'] -or $DefaultExcludedExtensions
+    $ExtensionsToLoad = $ProfileConfig['Extensions'] -or (Get-ChildItem -Path "$DriveLetter\crx").FullName
 
 # Function to prepare launcher options
 function Prepare-LauncherOptions {
@@ -112,12 +119,7 @@ Process {
     Write-Verbose "Invoking OperaLauncher with parameter $ProfileAlias on drive $DriveLetter"
 
     # Prepare launcher options
-    $LauncherOptions = Prepare-LauncherOptions 
-							-Profile $ProfileAlias 
-							-Extensions $ExtensionsToLoad 
-							-DownloadsPath $DownloadsPath 
-							-DefaultParameters $DefaultParameters 
-							-ProfileFolderPath $ProfileFolderPath
+    $LauncherOptions = Prepare-LauncherOptions -Profile $ProfileAlias -Extensions $ExtensionsToLoad -DownloadsPath $DownloadsPath -DefaultParameters $Parameters -ProfileFolderPath $ProfileFolderPath
 
     # Launch the Opera profile
     Invoke-Expression "Invoke-LaunchProcess -FilePath $LauncherPath -ArgumentList $LauncherOptions"
@@ -125,8 +127,15 @@ Process {
 
 # End block
 End {
-    # Purge profile and manage cache
-    & "$PWD\PurgeProfile.ps1" -DriveLetter $DriveLetter -PathSuffix $PathSuffix -ChildNode $ProfileAlias -CopyToCache $CopyToCache -Preserve $Preserve
+    
+	# Purge profile and manage cache
+    & "$PWD\PurgeProfile.ps1" @{
+		DriveLetter = $DriveLetter 
+		PathSuffix = $PathSuffix 
+		ChildNode = $ProfileAlias 
+		CopyToCache = $CopyToCache 
+		Preserve = $Preserve
+	}
 
     # Clear cache after profile purge
 	MoveOutFromCache @{    
