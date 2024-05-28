@@ -1,136 +1,169 @@
-#src: https://devblogs.microsoft.com/scripting/use-a-powershell-function-to-see-if-a-command-exists/
+# Function to test if a command exists in the current session
 function Test-CommandExists {
-    Param ($command)
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [string]$Command
+    )
     $oldErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'stop'
-    try { Get-Command $command; return $true }
-    catch {return $false}
-    finally { $ErrorActionPreference=$oldErrorActionPreference }
+    try {
+        Get-Command $Command | Out-Null
+        return $true
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $oldErrorActionPreference
+    }
 }
-function touch($file) 				            { "" | Out-File $file -Encoding ASCII }
-	function split-fileByLineNr                     { param( $pathName = '.\gron.csv',$OutputFilenamePattern = 'output_done_' , $LineLimit = 60)                                                                                                                                                                         ; $input = Get-Content                                                                  ; $line = 0                                                        ; $i = 0                                                       ; $path = 0                                                                       ; $start = 0                                   ; while ($line -le $input.Length) { if ($i -eq $LineLimit -Or $line -eq $input.Length)                                                                                                                                                                                                                                                                 { ; $path++                     ; $pathname = "$OutputFilenamePattern$path.csv"             ; $input[$start..($line - 1)]   | Out -File $pathname -Force   ; $start = $line ;                                  ; $i = 0                       ; Write -Host "$pathname"     ; }                         ; $i++                        ;            ; $line++                     ; }                                                                 ;                                ;}
-	
-	function split-fileByLineNr { param( $pathName = '.\gron.csv',$OutputFilenamePattern = 'output_done_' , $LineLimit = 60) ;
-		$ext = $pathName | split-path -Extension 
-		 $inputx = Get-Content ;
-		 $line = 0 ;
-		 $i = 0 ;
-		 $path = 0 ;
-		 $start = 0 ;
-		 while ($line -le $inputx.Length) {
-		      if ($i -eq $LineLimit -Or $line -eq $inputx.Length) {
-		    $path++ ;
-		    $pathname = "$OutputFilenamePattern$path$ext" ;
-		    $inputx[$start..($line - 1)] | Out -File $pathname -Force ;
-		    $start = $line ;
- 
-		    $i = 0 ;
-		    Write-Host "$pathname" ;
-		    } ;
-		 $i++ ;
-		 $line++ 
-		 }
-	}  
-	
-	function split-fileByMatch {
-		 param( $pathName = 'C:\Users\crbk01\Documents\WindowsPowerShell\snipps\Modules\Todo SplitUp.psm1' , $regex = '(?<=function\s)[^\s\(]*') ;
-		 $ext = ($pathName | split-path -Extension)
-		 $parent = ($pathName | split-path -Parent)
-		 $OriginalName = ($pathName | split-path -LeafBase)
-		 $inputx = Get-Content $pathName; $line = 0 ; $i = 0 ; $start = @(select-string -path $pathName -pattern $regex ) | select linenumber ; $LineLimit = $start | select -Skip 1 ; $names = @() ; [regex]::matches($inputx,$regex).groups.value | %{$names+= $_ }
-		 $occurence = 0 ;
- 
 
-		 while ($line -le $inputx.Length) {
-		    if ($i -eq ([int]$LineLimit[$occurence].linenumber -1) -Or $line -eq $inputx.Length) 
-		    {    
-		        $currentName = $names[$occurence];
-		        $pathname = Join-Path -path $parent -childPath "$OriginalName-$currentName$ext" ;
-		        $u = ([int]$start[$occurence].linenumber -1)
-    
-		        $inputx[$u..($line - 1)] > $pathname
-    
-		        $occurence++ ; 
-		        Write-Host "$u..($line - 1)$pathname" ;
-		    };
-		 $i++ ;
-		 $line++ 
-		 }
-	}
+# Function to create an empty file
+function Touch {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [string]$File
+    )
+    "" | Out-File $File -Encoding ASCII
+}
 
-if ( $(Test-CommandExists 'trid') )   
-{
-function SetFileExtension()
-	{
-		set-location (get-clipboard); 
-		$location = get-clipboard # Get the list of files in the current directory
-		$files = Get-ChildItem -File
+# Function to split a file by line number
+function Split-FileByLineNr {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [string]$PathName,
+        [Parameter(Mandatory)]
+        [string]$OutputFilenamePattern,
+        [Parameter(Mandatory)]
+        [int]$LineLimit
+    )
+    $input = Get-Content -Path $PathName
+    $line = 0
+    $i = 0
+    $path = 0
+    $start = 0
+    while ($line -le $input.Length) {
+        if ($i -eq $LineLimit -Or $line -eq $input.Length) {
+            $path++
+            $pathname = "$OutputFilenamePattern$path.csv"
+            $input[$start..($line - 1)] | Out-File $pathname -Force
+            $start = $line
+            $i = 0
+            Write-Host "$pathname"
+        }
+        $i++
+        $line++
+    }
+}
 
-		# Get the total number of files
+# Function to split a file by regex match
+function Split-FileByMatch {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [string]$PathName,
+        [Parameter(Mandatory)]
+        [string]$Regex
+    )
+    $ext = $PathName | Split-Path -Extension
+    $parent = $PathName | Split-Path -Parent
+    $OriginalName = $PathName | Split-Path -LeafBase
+    $inputx = Get-Content -Path $PathName
+    $line = 0
+    $i = 0
+    $start = @(Select-String -Path $PathName -Pattern $Regex) | Select-Object -ExpandProperty LineNumber
+    $LineLimit = $start | Select-Object -Skip 1
+    $names = @()
+    [regex]::Matches($inputx, $Regex).Groups.Value | ForEach-Object { $names += $_ }
+    $occurence = 0
+
+    while ($line -le $inputx.Length) {
+        if ($i -eq ([int]$LineLimit[$occurence].LineNumber - 1) -Or $line -eq $inputx.Length) {
+            $currentName = $names[$occurence]
+            $pathname = Join-Path -Path $parent -ChildPath "$OriginalName-$currentName$ext"
+            $u = ([int]$start[$occurence].LineNumber - 1)
+            $inputx[$u..($line - 1)] | Out-File $pathname
+            $occurence++
+            Write-Host "$u..($line - 1) $pathname"
+        }
+        $i++
+        $line++
+    }
+}
+
+# Check if 'trid' command exists before declaring related functions
+if (Test-CommandExists 'trid') {
+    # Function to set file extension based on 'trid' command output
+    function Set-FileExtension {
+        [CmdletBinding()]
+        Param (
+            [Parameter(Mandatory)]
+            [string]$Location
+        )
+        Set-Location $Location
+        $files = Get-ChildItem -File
+		$total = $files.Count
 		$total = $files.Count
 
 		# Initialize a counter for the current file
+        $total = $files.Count
+
+		# Initialize a counter for the current file
+		$current = 0
 		$current = 0
 
-$shell = $Host.UI.RawUI
+        $current = 0
 
+        $shell = $Host.UI.RawUI
+        $shell.WindowTitle = "Progress 0% @ $Location"
 
-    $shell.WindowTitle= "Progress 0% @ $($location)"
+        foreach ($file in $files) {
+            $current++
+            $percent = ($current / $total) * 100
+            $shell.WindowTitle = "Progress $percent% @ $Location"
+            Write-Progress -Activity "Setting file extensions in $Location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+            Set-FileExtensionIfNotMatch -FileName $file.Name
+        }
+    }
 
+    # Helper function to set file extension if it does not match the expected one
+    function Set-FileExtensionIfNotMatch {
+        [CmdletBinding()]
+        Param (
+            [Parameter(Mandatory)]
+            [string]$FileName
+        )
+        $currentExtension = [System.IO.Path]::GetExtension($FileName)
+        $expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
 
-		$files | % {
-		$file = $_
-		  $current++
+        if ($currentExtension -ne $expectedExtension) {
+            Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+            Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
+        }
+    }
 
-		  # Calculate the percentage of completion
-		  $percent = ($current / $total) * 100
+    # Helper function to get file extension from 'trid' command output
+    function Get-FileExtensionFromTrid {
+        [CmdletBinding()]
+        Param (
+            [Parameter(Mandatory)]
+            [string]$FileName
+        )
+        $tridOutput = trid $FileName
 
-		  # Change the console title
-		  $shell.WindowTitle  = "Progress $($percent)% @ $($location)"
-
-		  # Write a progress message with a progress bar
-		  Write-Progress -Activity "Setting file extensions in $location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-
-		  # Set the file extension if it does not match the one from trid
-		  Set-FileExtensionIfNotMatch($file.Name)
-		}
-	}
-
-	
-	function Set-FileExtensionIfNotMatch($fileName) {
-	  # Get the current file extension
-	  $currentExtension = [System.IO.Path]::GetExtension($fileName)
-
-	  # Get the expected file extension from trid
-	  $expectedExtension = Get-FileExtensionFromTrid($fileName)
-
-	  # Check if the current and expected extensions are different
-	  if ($currentExtension -ne $expectedExtension) {
-	    # Rename the file with the expected extension
-	    Rename-Item -Path $fileName -NewName ("$fileName$expectedExtension")
-	    # Write a message to the output
-	    Write-Output "Renamed file '$fileName' to have extension '$expectedExtension'"
-	  }
-	}
-	
-	function Get-FileExtensionFromTrid($fileName) {
-	  # Invoke trid with the file name and capture the output
-	  $tridOutput = trid $fileName
-
-	  # Check if the output contains any matches
+	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	  if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
 	    # Get the highest percentage match and its corresponding extension
-	    $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
-	    $extension = ($highestMatch.Groups[2].Value -split '/')[0]
-
-	    # Return the extension
-	    return $extension
-	  }
-	  else {
-	    # Return an empty string if no matches are found
-	    return ""
-	  }
-	}         
+        if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+	    # Get the highest percentage match and its corresponding extension
+            $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
+            $extension = ($highestMatch.Groups[2].Value -split '/')[0]
+            return $extension
+        } else {
+            return ""
+        }
+    }
 }
 
 # Function to set file extension through piping
@@ -151,33 +184,33 @@ function Set-FileExtensionThroughPiping {
     #>
     [CmdletBinding()]
     param (
-	[Parameter(ValueFromPipeline = $true)]
-	[ValidateNotNullOrEmpty()]
-	[ValidateScript({
-	    if ($_.psobject.Methods.Match('ToString')) {
-		$true
-	    } else {
-		throw 'Cannot convert pipeline object to string!'
-	    }
-	})]
-	[string]$Path
+        [Parameter(ValueFromPipeline = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_.psobject.Methods.Match('ToString')) {
+                $true
+            } else {
+                throw 'Cannot convert pipeline object to string!'
+            }
+        })]
+        [string]$Path
     )
 
     Process {
-	Set-Location $Path
-	$files = Get-ChildItem -File
-	$total = $files.Count
-	$current = 0
-	$shell = $Host.UI.RawUI
-	$shell.WindowTitle = "Progress 0% @ $Path"
+        Set-Location $Path
+        $files = Get-ChildItem -File
+        $total = $files.Count
+        $current = 0
+        $shell = $Host.UI.RawUI
+        $shell.WindowTitle = "Progress 0% @ $Path"
 
-	foreach ($file in $files) {
-	    $current++
-	    $percent = ($current / $total) * 100
-	    $shell.WindowTitle = "Progress $percent% @ $Path"
-	    Write-Progress -Activity "Setting file extensions in $Path" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-	    Set-FileExtensionIfNotMatch $file.Name
-	}
+        foreach ($file in $files) {
+            $current++
+            $percent = ($current / $total) * 100
+            $shell.WindowTitle = "Progress $percent% @ $Path"
+            Write-Progress -Activity "Setting file extensions in $Path" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+            Set-FileExtensionIfNotMatch -FileName $file.Name
+        }
     }
 }
 
@@ -230,7 +263,7 @@ function Set-FileExtensionThroughPiping {
 	return $sessionId;
     }
 
-    function clearCache() {
+    function clear-Cache() {
 
 	[CmdletBinding()]
 	param (
