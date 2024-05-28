@@ -1,37 +1,180 @@
-import-module ".\lib\FileHelper.psm1"
 
-function MoveOutFromCache { 
+# Main function to move files out from cache
+<## Example of calling the main function
+MoveOutFromCache -ProfileName "a_vin" -DriveLetter "E:"
+#>
+function MoveOutFromCache {
+    [CmdletBinding()]
     param (
-        $profileName = "a_vin", 
-        $driveLetter = "E:", 
-        $sessionStorage = "$driveLetter\sessionStorage\$profileName",
-        $profileLocation = "$driveLetter\_side_profiles\$profileName\",
-        $cachfoldername = "cache",
-        $innerCacheFolder = "cache_data"
-        ) 
-    
-        $dateTime = Get-Date -Format "yyyyMMdd_HHmmss";
-        $excludedExtensions = @(".pam", ".zip", ".tar", ".gz", ".null", ".gpg", ".woff2", ".woff", ".bs", ".ini" );   
-    cd $profileLocation ; 
-    $a = @(); 
-    $q = (get-childitem  -dept 1 -include $cachfoldername) ; 
-    
-    $a = @($q | get-childitem -filter $innerCacheFolder | select fullname) ; 
-    
-    $a | % { 
-        ( set-clipboard $_.fullname | & SetFileExtension ) ; 
-    
-        $originalFolderPath = $_.fullname ; 
-        
-        $newFolderPath = Join-Path ($sessionStorage) $dateTime ; 
-        
-        New-Item -ItemType Directory -Force -Path $newFolderPath ;
-        
-        Get-ChildItem -Path $originalFolderPath -File | 
-            ? { $_.Extension } | 
-                ? { $_.Extension -notin $excludedExtensions } |
-                % { 
-                        Move-Item -Path $_.FullName -Destination $newFolderPath 
-                    } } }
-cd E:\OperaLauncher
-MoveOutFromCache                    
+	[string]$ProfileName = "a_vin",
+	[string]$DriveLetter = "E:",
+	[string]$CacheFolderName = "cache",
+	[string]$InnerCacheFolder = "cache_data",
+	[string[]]$ExcludedExtensions = @(".pam", ".zip", ".tar", ".gz", ".null", ".gpg", ".woff2", ".woff", ".bs", ".ini")
+    )
+
+    $ProfileLocation = "$DriveLetter\_side_profiles\$ProfileName\"
+    $SessionStorage = "$DriveLetter\sessionStorage\$ProfileName"
+    $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
+    $newFolderPath = Join-Path -Path $SessionStorage -ChildPath $dateTime
+        New-Item -ItemType Directory -Force -Path $newFolderPath
+
+    $cachePath = Join-Path -Path $ProfileLocation -ChildPath $CacheFolderName
+    $innerCachePath = Join-Path -Path $cachePath -ChildPath $InnerCacheFolder
+    $filesInCache = Get-ChildItem -Path $innerCachePath -File
+    $filesNotMoved = @()
+
+    foreach ($file in $filesInCache) {
+        if ("" -ne $file.Extension -and $file.Extension -notin $ExcludedExtensions ) {
+            Move-Item -Path $file.FullName -Destination $newFolderPath
+        } else {
+            $checksum = Get-FileHash -Path $file.FullName -Algorithm MD5
+            $filesNotMoved += "$($file.Name):$($checksum.Hash)"
+        }
+    }
+
+    Create-ChecksumFile -SessionStorage $SessionStorage -FilesNotMoved $filesNotMoved
+
+    Clear-Cache @{
+        DriveLetter = $DriveLetter
+        PathSuffix = $DriveLetter  
+        ChildNode  = ""
+        ExcludedExtension  = ""
+    }
+}
+
+function Move-BasedOnExtension {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$OriginalFolderPath,
+	[Parameter(Mandatory)]
+	[string]$ExcludedExtension,
+	[Parameter(Mandatory)]
+	[string]$NewFolderPath
+    )
+    $exect = @($ExcludedExtension -split ",")
+    $unfiltered = Get-ChildItem -Path $OriginalFolderPath -File
+    $withExtensions = $unfiltered | Where-Object { $_.Extension }
+    $filteredToMove = $withExtensions | Where-Object { $_.Extension -notin $exect }
+    $zz = $filteredToMove.Length
+    $z = [bool]$zz -gt 0
+
+    if ($z) {
+	New-Item -ItemType Directory -Force -Path $NewFolderPath
+	$filteredToMove | ForEach-Object { Move-Item -Path $_.FullName -Destination $NewFolderPath -PassThru }
+	Write-Host ("Moved " + $filteredToMove.Length + " items to " + $NewFolderPath)
+    } else {
+	Write-Host "No files to move."
+    }
+}
+
+# Function to get session ID based on file creation times
+function Get-SessionId {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ChildPath
+    )
+
+    $internalItems = Get-ChildItem -Path $ChildPath
+    $firstFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
+    $lastFile = ($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
+    $q = $lastFile - $firstFile
+
+    if ($q.Days -gt 0) {
+	$from = Get-Date -Date $firstFile -Format "yyMMdd_HHmmss"
+	$to = Get-Date -Date $lastFile -Format "yyMMdd_HHmmss"
+    }
+
+    $sessionId = Get-Date -Format "yyMMdd_HHmmss"
+    return $sessionId
+}
+
+# Function to clear cache with checksum comparison
+function Clear-Cache {
+    [CmdletBinding()]
+    param (
+	[Alias("DriveLet")]
+	[string]$DriveLetter,
+	[string]$PathSuffix,
+	[Alias("ProfileName")]
+	[string]$ChildNode,
+	[string]$ExcludedExtensions,
+    [string]$sourceFold = (Join-Path -Path $DriveLetter -ChildPath $PathSuffix),
+    [string]$profileLocation = (Join-Path -Path $sourceFold -ChildPath $ChildNode),
+    [string]$sessionStorage = "$DriveLetter\sessionStorage"
+    )
+
+
+
+    Push-Location
+    Set-Location $sourceFold
+
+    $checksumFilePattern = ".cache_checksums_*.txt"
+    $checksumFiles = Get-ChildItem -Path $sessionStorage -Filter $checksumFilePattern -Hidden -File
+
+    foreach ($checksumFile in $checksumFiles) {
+	$filesChanged = Compare-Checksums -ChecksumFilePath $checksumFile.FullName -ProfileLocation $profileLocation
+
+	foreach ($file in $filesChanged) {
+	    $file.FullName | Set-FileExtensionThroughPiping
+	}
+
+	$filesAfterPiping = Get-ChildItem -Path $profileLocation -File
+	$filesRenamed = Compare-Object -ReferenceObject $currentFiles -DifferenceObject $filesAfterPiping -Property Name | Where-Object { $_.SideIndicator -eq "=>" }
+
+	if ($filesRenamed) {
+	    $newFolderPath = Join-Path -Path $sessionStorage -ChildPath (Get-Date -Format "yyyyMMdd_HHmmss")
+	    Move-BasedOnExtension -OriginalFolderPath $profileLocation -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFolderPath
+	}
+    }
+
+    Pop-Location
+}
+
+# Function to create a checksum file for files not moved
+function Create-ChecksumFile {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$SessionStorage,
+	[Parameter(Mandatory)]
+	[string[]]$FilesNotMoved
+    )
+
+    $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
+    $checksumFile = Join-Path -Path $SessionStorage -ChildPath ".cache_checksums_$dateTime.txt"
+
+    $filesNotMoved | Out-File -FilePath $checksumFile -Force
+    $fileInfo = Get-Item -Path $checksumFile
+    $fileInfo.Attributes = 'Hidden'
+}
+
+# Function to compare current files with checksums and identify changes
+function Compare-Checksums {
+    [CmdletBinding()]
+    param (
+	[Parameter(Mandatory)]
+	[string]$ChecksumFilePath,
+	[Parameter(Mandatory)]
+	[string]$ProfileLocation
+    )
+
+    $previousChecksums = Get-Content -Path $ChecksumFilePath
+    $currentFiles = Get-ChildItem -Path $ProfileLocation -File
+    $filesChanged = @()
+
+    foreach ($file in $currentFiles) {
+	$currentChecksum = Get-FileHash -Path $file.FullName -Algorithm MD5
+	$previousEntry = $previousChecksums | Where-Object { $_ -match "^$($file.Name):" }
+
+	if ($previousEntry -and ($previousEntry.Split(':')[1] -ne $currentChecksum.Hash)) {
+	    $filesChanged += $file
+	}
+    }
+
+    Remove-Item -Path $ChecksumFilePath -Force
+    return $filesChanged
+}
+

@@ -1,6 +1,16 @@
 {
     "recommendations": [
         "foxundermoon.shell-format",
-        "webfreak.advanced-local-formatters"
+        "webfreak.advanced-local-formatters",
+        "usernamehw.commands",
+        "solomonkinard.git-blame",
+        "shyykoserhiy.git-autoconfig",
+        "semanticdiff.semanticdiff",
+        "gera2ld.markmap-vscode",
+        "leodevbro.blockman",
+        "dineug.vuerd-vscode",
+        "cmoog.sqlnotebook",
+        "unoplatform.vscode",
+        "evidence.evidence-vscode"
     ]
 }

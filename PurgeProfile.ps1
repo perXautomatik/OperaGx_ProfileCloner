@@ -2,7 +2,7 @@
     param (
         [Parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
-        [string]$driveLet,
+        [alias("driveLetter")][string]$driveLet,
 
         [Parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
