@@ -204,16 +204,11 @@ import-module ".\lib\FileHelper.psm1"
 			# Update the progress parameters
 			$ProgressParams.PercentComplete = $percent
 			$ProgressParams.Status = "Processing item $current of $total"
-			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
-
-			# Display the progress bar using splatting
 			
-			# Get the list of valid parameter names for the function
-			$validParameters = (Get-Command Write-Progress).Parameters.Keys
-			# Filter out invalid parameters
-			$q = $ProgressParams.Keys | ? { $_ -notin $validParameters } ;
-			$q | % { $ProgressParams.Remove($_) }
-
+			#invoke
+			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
+			$ProgressParams = filter-HashTableForSplatting Write-Progress $ProgressParams;						
+			# Display the progress bar using splatting
 			Write-Progress @ProgressParams
 
 			# Update the console title
@@ -226,6 +221,19 @@ import-module ".\lib\FileHelper.psm1"
 	}
 
 
+	function filter-HashTableForSplatting {
+		param (
+			$commandName,
+			$HashedParams
+		)
+					# Get the list of valid parameter names for the function
+					$validParameters = (Get-Command $commandName).Parameters.Keys
+					# Filter out invalid parameters
+					$q = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
+					$q | % { $HashedParams.Remove($_) }
+
+			return $HashedParams						
+		}
 
 
 
