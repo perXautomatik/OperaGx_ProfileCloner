@@ -198,7 +198,7 @@ import-module ".\lib\FileHelper.psm1"
 			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke().ToString()
 	
 			# Display the progress bar
-			Write-Progress -Activity $ProgressParams.ActivityTitle -Status $ProgressParams.Status -PercentComplete $ProgressParams.PercentComplete -CurrentOperation $ProgressParams.CurrentOperation
+			Write-Progress @ProgressParams
 	
 			# Update the console title
 			$shell.WindowTitle = "Progress $($ProgressParams.PercentComplete)%"
