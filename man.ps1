@@ -226,30 +226,30 @@ import-module ".\lib\FileHelper.psm1"
 			$commandName,
 			$HashedParams
 		)
-					# Get the list of valid parameter names for the function
-					$validParameters = (Get-Command $commandName).Parameters.Keys
-					# Filter out invalid parameters
-					$q = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
-					$q | % { $HashedParams.Remove($_) }
+			# Get the list of valid parameter names for the function
+			$validParameters = (Get-Command $commandName).Parameters.Keys
+			# Filter out invalid parameters
+			$q = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
+			$q | % { $HashedParams.Remove($_) }
 
 			return $HashedParams						
 		}
 
 
 
-function Launch_opera_profile {
+	function Launch_opera_profile {
 
-	# Prepare launcher options
-    $AllArgs = Prepare-LauncherOptions @launchParams
+		# Prepare launcher options
+		$AllArgs = Prepare-LauncherOptions @launchParams
 
-    $processOptions = @{
-	FilePath = $launcher
-	ArgumentList = $AllArgs
-    }; echo $processOptions
+		$processOptions = @{
+		FilePath = $launcher
+		ArgumentList = $AllArgs
+		}; echo $processOptions
 
-    # Launch the Opera profile
-    Invoke-LaunchProcess @processOptions
-}
+		# Launch the Opera profile
+		Invoke-LaunchProcess @processOptions
+	}
 
     function moveBasedONextnesion() {
 	[CmdletBinding()]
@@ -315,22 +315,20 @@ function Launch_opera_profile {
 		Push-Location;
 		cd $sourceFold;
 
-		$unfiltered = @((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) ;
-		$unfiltered | % {
-			$childNode = $_.parent.parent
-
-			$sesStor = "$driveLetter\sessionStorage\$childNode"
-
-			$sessionId = get-sesId -childPath $childNode;
-
-			$newFol = (Join-Path ($sesStor) $sessionId)
-			if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) {
-			Write-Debug "already exsisting"
-			}
+		@((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) | % {
+			$childNode = $_.parent.parent			
+			$newFol = (Join-Path ( Join-Path $sessionStorage $childNode) (get-sesId -childPath $childNode))
+			
+			if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) { Write-Debug "already exsisting" }
 			else
 			{
-			( $_.fullname | SetFileExtensionThroughPiping ) ;
-			moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
+				( $_.fullname | SetFileExtensionThroughPiping ) ;
+				$moveBasedParams = @{
+					excludedExtension = $exc
+					originalFolderPath = $_.fullname
+					newFolderPath = $newFol
+				}
+				moveBasedONextnesion @moveBasedParams
 			}
 
 		}
@@ -338,13 +336,13 @@ function Launch_opera_profile {
 		Pop-Location;
 
     }
-
-    clearCache @paramx
-
+    
 }
 
 # Process block
 Process {
+	clearCache @paramx
+
     Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
 
     Set-Location $driveLet\
