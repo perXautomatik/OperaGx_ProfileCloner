@@ -45,7 +45,7 @@ import-module ".\lib\FileHelper.psm1"
     $DefaultPathSuffix = '\_side_profiles'
     $DefaultCopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
     $DefaultPreserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
-	
+
     $DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 
     # Override defaults with specific profile configurations if provided
@@ -126,19 +126,16 @@ import-module ".\lib\FileHelper.psm1"
 	function SetFileExtensionThroughPiping {
 		[CmdletBinding()]
 		param (
-			[Parameter(ValueFromPipeline = $true)]
+			[Parameter(ValueFromPipeline = $true,Mandatory = $true)]
 			[ValidateNotNullOrEmpty()]
-			[object[]]$InputObject
+			[ValidateScript({				
+				if($_.length -gt 0) { $true }
+				else { throw 'empty string or zero length array provided' }
+			})]
+			$InputObject
 		)
-	
+
 		begin {
-			# Initialize variables that are used in the process block
-			$total = 0
-			$current = 0
-			$shell = $Host.UI.RawUI
-		}
-	
-		process {
 			foreach ($item in $InputObject) {
 				# Determine if the input is a file or directory
 				if (Test-Path $item -PathType Leaf) {
@@ -149,66 +146,79 @@ import-module ".\lib\FileHelper.psm1"
 					$files += Get-ChildItem $item -File
 				}
 			}
-	
+
 			# Define the progress parameters
 			$ProgressParams = @{
 				TotalCount = $files.Count
 				ActivityTitle = "Setting file extensions"
+				Status = ""
+				PercentComplete = 0
+				CurrentOperation = ""
 			}
+
+		}
+		process {
 
 			# Process each file with the progress bar
 			$files | Process-WithProgressBar -ProcessBlock {
 				param($file)
+				# Your processing code here
 				Set-FileExtensionIfNotMatch $file.FullName
 			} -ProgressParams $ProgressParams
 
 		}
-	
+
 		end {
 			# Any cleanup code if needed
 		}
 	}
-	
+
 	function Process-WithProgressBar {
 		[CmdletBinding()]
 		param (
+			[parameter(ValueFromPipeline)]
+			$_,
 			[Parameter(Mandatory = $true)]
 			[scriptblock]$ProcessBlock,
 			[Parameter(Mandatory = $true)]
 			[hashtable]$ProgressParams
 		)
-	
+
 		begin {
 			# Initialize variables that are used in the process block
 			$current = 0
 			$total = $ProgressParams.TotalCount
 			$shell = $Host.UI.RawUI
 		}
-	
+
 		process {
+			# Process the current piped object
+			$currentObject = $_
+
 			# Increment the current count
 			$current++
-	
+
 			# Calculate the percentage of completion
 			$percent = ($current / $total) * 100
-	
+
 			# Update the progress parameters
 			$ProgressParams.PercentComplete = $percent
 			$ProgressParams.Status = "Processing item $current of $total"
-			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke().ToString()
-	
-			# Display the progress bar
+			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
+
+			# Display the progress bar using splatting
 			Write-Progress @ProgressParams
-	
+
 			# Update the console title
 			$shell.WindowTitle = "Progress $($ProgressParams.PercentComplete)%"
 		}
-	
+
 		end {
 			# Any cleanup code if needed
 		}
 	}
-	
+
+
 
 
 
@@ -255,62 +265,62 @@ function Launch_opera_profile {
     }
 
     function get-sesId {
-	param(
-	    $childPath
-	)
+		param(
+			$childPath
+		)
 
-	$internalItems = ($childPath | get-childitem );
-	$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
-	$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
-	$q = $lastFile -$firtFile
+		$internalItems = ($childPath | get-childitem );
+		$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
+		$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
+		$q = $lastFile -$firtFile
 
-	if($q.Days -gt 0)
-	{
-	    $from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
-	    $to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
-	}
+		if($q.Days -gt 0)
+		{
+			$from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
+			$to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
+		}
 
-	$sessionId = (Get-Date -Format "yyMMdd_HHmmss");
-	return $sessionId;
+		$sessionId = (Get-Date -Format "yyMMdd_HHmmss");
+		return $sessionId;
     }
 
     function clearCache() {
 
-	[CmdletBinding()]
-	param (
-	    [alias("driveLet")]$driveLetter = "E:",
-	    $pathSufix = "\_side_profiles",
-	    [alias("profileName")]$childNode, # = "a_vin"
-	    $sourceFold = (join-path $driveLetter $pathSufix),
-	    $profileLocation = (join-path $sourceFold $childNode),
-	    $sessionStorage = "$driveLetter\sessionStorage",
-	    $exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-	)
+		[CmdletBinding()]
+		param (
+			[alias("driveLet")]$driveLetter = "E:",
+			$pathSufix = "\_side_profiles",
+			[alias("profileName")]$childNode, # = "a_vin"
+			$sourceFold = (join-path $driveLetter $pathSufix),
+			$profileLocation = (join-path $sourceFold $childNode),
+			$sessionStorage = "$driveLetter\sessionStorage",
+			$exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+		)
 
-	Push-Location;
-	cd $sourceFold;
+		Push-Location;
+		cd $sourceFold;
 
-	$unfiltered = @((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) ;
-	$unfiltered | % {
-	    $childNode = $_.parent.parent
+		$unfiltered = @((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) ;
+		$unfiltered | % {
+			$childNode = $_.parent.parent
 
-	    $sesStor = "$driveLetter\sessionStorage\$childNode"
+			$sesStor = "$driveLetter\sessionStorage\$childNode"
 
-	    $sessionId = get-sesId -childPath $childNode;
+			$sessionId = get-sesId -childPath $childNode;
 
-	    $newFol = (Join-Path ($sesStor) $sessionId)
-	    if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) {
-		Write-Debug "already exsisting"
-	    }
-	    else
-	    {
-		( $_.fullname | SetFileExtensionThroughPiping ) ;
-		moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
-	    }
+			$newFol = (Join-Path ($sesStor) $sessionId)
+			if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) {
+			Write-Debug "already exsisting"
+			}
+			else
+			{
+			( $_.fullname | SetFileExtensionThroughPiping ) ;
+			moveBasedONextnesion -excludedExtension $exc -originalFolderPath $_.fullname -newFolderPath $newFol
+			}
 
-	}
+		}
 
-	Pop-Location;
+		Pop-Location;
 
     }
 
