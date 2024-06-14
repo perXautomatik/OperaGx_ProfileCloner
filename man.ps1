@@ -251,33 +251,46 @@ import-module ".\lib\FileHelper.psm1"
 		Invoke-LaunchProcess @processOptions
 	}
 
-    function moveBasedONextnesion() {
-	[CmdletBinding()]
-	param (
-	    $originalFolderPath,
-	    $excludedExtension,
-	    $newFolderPath
-	)
-	    $exect = @($excludedExtension -split "," );
-
-	    $unfiltered = (Get-ChildItem -Path $originalFolderPath -File)
-	    $withExtensions = $unfiltered | ? { $_.Extension };
-	    $filteredToMove = $withExtensions | ? { $_.Extension -notin $exect };
-	    $zz = $filteredToMove.Length;
-	    $z = [bool]$zz -gt 0;
-
-	    if ( $z ){
-
-
-		New-Item -ItemType Directory -Force -Path $newFolderPath ;
-
-		$filteredToMove | % {  Move-Item -Path $_.FullName -Destination $newFolderPath -PassThru  }
-		Write-Host (""+($filteredToMove.Length)+ "/" + ($newFolderPath | get-childitem).length)
-	    }
-	    else {
-		Write-Host "no cache"
-	    }
-    }
+	function Move-BasedOnExtension {
+		[CmdletBinding()]
+		param (
+			[Parameter(Mandatory = $true)]
+			[string]$OriginalFolderPath,
+	
+			[Parameter(Mandatory = $true)]
+			[string]$ExcludedExtensions,
+	
+			[Parameter(Mandatory = $true)]
+			[string]$NewFolderPath
+		)
+	
+		# Convert the excluded extensions string into an array
+		$excludedExtensionArray = $ExcludedExtensions -split ","
+	
+		# Retrieve all files in the original folder path
+		$files = Get-ChildItem -Path $OriginalFolderPath -File
+	
+		# Filter files to exclude the specified extensions
+		$filesToMove = $files | Where-Object { $_.Extension -notin $excludedExtensionArray }
+	
+		# Check if there are files to move
+		if ($filesToMove) {
+			# Ensure the new folder path exists
+			$null = New-Item -ItemType Directory -Force -Path $NewFolderPath
+	
+			# Move the filtered files
+			foreach ($file in $filesToMove) {
+				Move-Item -Path $file.FullName -Destination $NewFolderPath -PassThru
+			}
+	
+			# Output the count of moved files
+			Write-Host "$($filesToMove.Count) file(s) moved to $NewFolderPath"
+		}
+		else {
+			Write-Host "No files to move based on the specified extensions."
+		}
+	}
+	
 
     function Get-SessionId {
 		param(
@@ -322,10 +335,10 @@ import-module ".\lib\FileHelper.psm1"
 		Set-Location -Path $SourceFolder
 	
 		# Retrieve cache directories and process each one
-		Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | ForEach-Object {
+		Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  } | %{
 			$currentCacheFolder = $_
 			$parentProfileName = $currentCacheFolder.Parent.Name
-			$newFolder = Join-Path -Path $SessionStorage -ChildPath (Get-SessionId -ChildPath $parentProfileName)
+			$newFolder = Join-Path -Path $SessionStorage -ChildPath (Get-SessionId -ChildPath $currentCacheFolder)
 	
 			# Check if the new folder already exists
 			if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
