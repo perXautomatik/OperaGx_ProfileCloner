@@ -136,6 +136,19 @@ import-module ".\lib\FileHelper.psm1"
 		)
 
 		begin {
+
+			# Define the progress parameters
+			$ProgressParams = @{
+				TotalCount = 0
+				Activity = "Setting file extensions"
+				Status = ""
+				PercentComplete = 0
+				CurrentOperation = ""
+			}
+
+		}
+		process {
+
 			foreach ($item in $InputObject) {
 				# Determine if the input is a file or directory
 				if (Test-Path $item -PathType Leaf) {
@@ -146,19 +159,7 @@ import-module ".\lib\FileHelper.psm1"
 					$files += Get-ChildItem $item -File
 				}
 			}
-
-			# Define the progress parameters
-			$ProgressParams = @{
-				TotalCount = $files.Count
-				ActivityTitle = "Setting file extensions"
-				Status = ""
-				PercentComplete = 0
-				CurrentOperation = ""
-			}
-
-		}
-		process {
-
+			$ProgressParams.TotalCount = $files.Count;
 			# Process each file with the progress bar
 			$files | Process-WithProgressBar -ProcessBlock {
 				param($file)
@@ -167,10 +168,9 @@ import-module ".\lib\FileHelper.psm1"
 			} -ProgressParams $ProgressParams
 
 		}
-
 		end {
 			# Any cleanup code if needed
-		}
+		}	
 	}
 
 	function Process-WithProgressBar {
@@ -213,6 +213,7 @@ import-module ".\lib\FileHelper.psm1"
 			# Filter out invalid parameters
 			$q = $ProgressParams.Keys | ? { $_ -notin $validParameters } ;
 			$q | % { $ProgressParams.Remove($_) }
+
 			Write-Progress @ProgressParams
 
 			# Update the console title
