@@ -150,37 +150,63 @@ import-module ".\lib\FileHelper.psm1"
 				}
 			}
 	
-			# Update total count after collecting all files
-			$total = $files.Count
-			$shell.WindowTitle = "Progress 0%"
-	
-			# Process each file
-			foreach ($file in $files) {
-				$current++
-				$percent = ($current / $total) * 100
-				$shell.WindowTitle = "Progress $($percent)%"
-	
-				# Display progress using a separate function
-				Show-ProgressBar -Activity "Setting file extensions" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-	
-				# Set the file extension if it does not match the one from trid
-				Set-FileExtensionIfNotMatch $file.FullName
+			# Define the progress parameters
+			$ProgressParams = @{
+				TotalCount = $files.Count
+				ActivityTitle = "Setting file extensions"
 			}
+
+			# Process each file with the progress bar
+			$files | Process-WithProgressBar -ProcessBlock {
+				param($file)
+				Set-FileExtensionIfNotMatch $file.FullName
+			} -ProgressParams $ProgressParams
+
 		}
 	
 		end {
 			# Any cleanup code if needed
 		}
 	}
-	function Show-ProgressBar {
+	
+	function Process-WithProgressBar {
+		[CmdletBinding()]
 		param (
-			[string]$Activity,
-			[string]$Status,
-			[int]$PercentComplete,
-			[string]$CurrentOperation
+			[Parameter(Mandatory = $true)]
+			[scriptblock]$ProcessBlock,
+			[Parameter(Mandatory = $true)]
+			[hashtable]$ProgressParams
 		)
 	
-		Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete -CurrentOperation $CurrentOperation
+		begin {
+			# Initialize variables that are used in the process block
+			$current = 0
+			$total = $ProgressParams.TotalCount
+			$shell = $Host.UI.RawUI
+		}
+	
+		process {
+			# Increment the current count
+			$current++
+	
+			# Calculate the percentage of completion
+			$percent = ($current / $total) * 100
+	
+			# Update the progress parameters
+			$ProgressParams.PercentComplete = $percent
+			$ProgressParams.Status = "Processing item $current of $total"
+			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke().ToString()
+	
+			# Display the progress bar
+			Write-Progress -Activity $ProgressParams.ActivityTitle -Status $ProgressParams.Status -PercentComplete $ProgressParams.PercentComplete -CurrentOperation $ProgressParams.CurrentOperation
+	
+			# Update the console title
+			$shell.WindowTitle = "Progress $($ProgressParams.PercentComplete)%"
+		}
+	
+		end {
+			# Any cleanup code if needed
+		}
 	}
 	
 
