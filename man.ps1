@@ -207,6 +207,12 @@ import-module ".\lib\FileHelper.psm1"
 			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
 
 			# Display the progress bar using splatting
+			
+			# Get the list of valid parameter names for the function
+			$validParameters = (Get-Command Write-Progress).Parameters.Keys
+			# Filter out invalid parameters
+			$q = $ProgressParams.Keys | ? { $_ -notin $validParameters } ;
+			$q | % { $ProgressParams.Remove($_) }
 			Write-Progress @ProgressParams
 
 			# Update the console title
