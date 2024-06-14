@@ -279,7 +279,7 @@ import-module ".\lib\FileHelper.psm1"
 	    }
     }
 
-    function get-sesId {
+    function Get-SessionId {
 		param(
 			$childPath
 		)
@@ -299,49 +299,63 @@ import-module ".\lib\FileHelper.psm1"
 		return $sessionId;
     }
 
-    function clearCache() {
-
+	function Clear-Cache {
 		[CmdletBinding()]
 		param (
-			[alias("driveLet")]$driveLetter = "E:",
-			$pathSufix = "\_side_profiles",
-			[alias("profileName")]$childNode, # = "a_vin"
-			$sourceFold = (join-path $driveLetter $pathSufix),
-			$profileLocation = (join-path $sourceFold $childNode),
-			$sessionStorage = "$driveLetter\sessionStorage",
-			$exc = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+			[Alias("DriveLet")][string]$DriveLetter = "E:",
+	
+			[Alias("PathSufix")] [string]$PathSuffix = "\_side_profiles",
+	
+			[Alias("ProfileName")] [string]$ChildNode,
+	
+			[string]$SourceFolder = (Join-Path -Path $DriveLetter -ChildPath $PathSuffix),
+	
+			[string]$ProfileLocation = (Join-Path -Path $SourceFolder -ChildPath $ChildNode),
+	
+			[string]$SessionStorage = "$DriveLetter\sessionStorage",
+	
+			[string]$ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		)
-
-		Push-Location;
-		cd $sourceFold;
-
-		@((get-childitem -Path $profileLocation -dept 1 -include "cache") | get-childitem ) | % {
-			$childNode = $_.parent.parent			
-			$newFol = (Join-Path ( Join-Path $sessionStorage $childNode) (get-sesId -childPath $childNode))
-			
-			if (($newFol | Get-ChildItem -ErrorAction SilentlyContinue).Length -gt 0 ) { Write-Debug "already exsisting" }
-			else
-			{
-				( $_.fullname | SetFileExtensionThroughPiping ) ;
-				$moveBasedParams = @{
-					excludedExtension = $exc
-					originalFolderPath = $_.fullname
-					newFolderPath = $newFol
+	
+		# Navigate to the source folder
+		Push-Location
+		Set-Location -Path $SourceFolder
+	
+		# Retrieve cache directories and process each one
+		Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | ForEach-Object {
+			$currentCacheFolder = $_
+			$parentProfileName = $currentCacheFolder.Parent.Name
+			$newFolder = Join-Path -Path $SessionStorage -ChildPath (Get-SessionId -ChildPath $parentProfileName)
+	
+			# Check if the new folder already exists
+			if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+				Write-Debug "The folder already exists."
+			} else {
+				# Change file extensions before moving
+				$currentCacheFolder.FullName | Set-FileExtensionThroughPiping
+	
+				# Define parameters for moving files based on extension
+				$moveParams = @{
+					ExcludedExtension = $ExcludedExtensions
+					OriginalFolderPath = $currentCacheFolder.FullName
+					NewFolderPath = $newFolder
 				}
-				moveBasedONextnesion @moveBasedParams
+	
+				# Move files based on the defined parameters
+				Move-BasedOnExtension @moveParams
 			}
-
 		}
-
-		Pop-Location;
-
-    }
+	
+		# Return to the original location
+		Pop-Location
+	}
+	
     
 }
 
 # Process block
 Process {
-	clearCache @paramx
+	Clear-Cache @paramx
 
     Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
 
@@ -353,5 +367,5 @@ Process {
 End {
     & $driveLetter\OperaLauncher\PurgeProfile.ps1 @paramx -CopyToCache $copyToCache -preserve $preserve
 
-	clearCache @paramx
+	Clear-Cache @paramx
 }
