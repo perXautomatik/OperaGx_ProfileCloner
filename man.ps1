@@ -123,59 +123,67 @@ import-module ".\lib\FileHelper.psm1"
 	}
 
 
-function SetFileExtensionThroughPiping()
-	{
-	[CmdletBinding()]
-	param (
-	    [Parameter(ValueFromPipeline = $true)]
-	    [ValidateNotNullOrEmpty()]
-	    [ValidateScript({
-		if($_.psobject.Methods.Match.('ToString'))
-		{
-		    $true
+	function SetFileExtensionThroughPiping {
+		[CmdletBinding()]
+		param (
+			[Parameter(ValueFromPipeline = $true)]
+			[ValidateNotNullOrEmpty()]
+			[object[]]$InputObject
+		)
+	
+		begin {
+			# Initialize variables that are used in the process block
+			$total = 0
+			$current = 0
+			$shell = $Host.UI.RawUI
 		}
-		else
-		{
-		    throw 'Can''t convert pipeline object to string!'
+	
+		process {
+			foreach ($item in $InputObject) {
+				# Determine if the input is a file or directory
+				if (Test-Path $item -PathType Leaf) {
+					# It's a file, add to processing list
+					$files += Get-Item $item
+				} elseif (Test-Path $item -PathType Container) {
+					# It's a directory, add all files within to processing list
+					$files += Get-ChildItem $item -File
+				}
+			}
+	
+			# Update total count after collecting all files
+			$total = $files.Count
+			$shell.WindowTitle = "Progress 0%"
+	
+			# Process each file
+			foreach ($file in $files) {
+				$current++
+				$percent = ($current / $total) * 100
+				$shell.WindowTitle = "Progress $($percent)%"
+	
+				# Display progress using a separate function
+				Show-ProgressBar -Activity "Setting file extensions" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
+	
+				# Set the file extension if it does not match the one from trid
+				Set-FileExtensionIfNotMatch $file.FullName
+			}
 		}
-	    })]
-	    $parmPath
-	)
-
-
-		set-location ($parmPath);
-		$location = $parmPath # Get the list of files in the current directory
-		$files = Get-ChildItem -File
-
-		# Get the total number of files
-		$total = $files.Count
-
-		# Initialize unfiltered counter for the current file
-		$current = 0
-
-	$shell = $Host.UI.RawUI
-
-
-	$shell.WindowTitle= "Progress 0% @ $($location)"
-
-
-		$files | % {
-		$file = $_
-		  $current++
-
-		  # Calculate the percentage of completion
-		  $percent = ($current / $total) * 100
-
-		  # Change the console title
-		  $shell.WindowTitle  = "Progress $($percent)% @ $($location)"
-
-		  # Write unfiltered progress message with unfiltered progress bar
-		  Write-Progress -Activity "Setting file extensions in $location" -Status "Processing file $current of $total" -PercentComplete $percent -CurrentOperation "Checking file '$($file.Name)'"
-
-		  # Set the file extension if it does not match the one from trid
-		  Set-FileExtensionIfNotMatch($file.Name)
+	
+		end {
+			# Any cleanup code if needed
 		}
 	}
+	function Show-ProgressBar {
+		param (
+			[string]$Activity,
+			[string]$Status,
+			[int]$PercentComplete,
+			[string]$CurrentOperation
+		)
+	
+		Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete -CurrentOperation $CurrentOperation
+	}
+	
+
 
 
 function Launch_opera_profile {
