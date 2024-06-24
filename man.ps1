@@ -25,7 +25,7 @@ A hashtable containing specific configurations for profiles.
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_taboo",
+    [string]$ProfileAlias = "a_vin",
     [string]$DriveLetter = 'E:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{}
@@ -38,43 +38,63 @@ Begin {
     # Override defaults with specific profile configurations if provided
 	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
 
-
-    $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
-    $DefaultProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
-    $DefaultDownloadsPath = Join-Path $DriveLetter "downloads"
-	$DefaultExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
+	$Default = @{
+		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
+		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
+		DownloadsPath = Join-Path $DriveLetter "downloads"
+		ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
+			
+		PathSuffix = '\_side_profiles'
+		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		
-	$launchParams = @{
-		Profile = $ProfileAlias
-		Extensions = @($ProfileConfig['Extensions'] , $DefaultExtensionsToLoad)| ?{ $null -ne $_}[0]
-		DownloadsPath = @($ProfileConfig['DownloadsPath'] , $DefaultDownloadsPath )| ?{ $null -ne $_}[0]
-		DefaultParameters = @($ProfileConfig['Parameters'] , $DefaultParameters)| ?{ $null -ne $_}[0]
-		ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $DefaultProfileFolderPath )| ?{ $null -ne $_}[0]
+		CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')        
+		Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
 	}
 
+	$launchParams = @{
+		Profile = $ProfileAlias
+		Extensions = @($ProfileConfig['Extensions'] , $Default.ExtensionsToLoad)| ?{ $null -ne $_}[0]
+		DownloadsPath = @($ProfileConfig['DownloadsPath'] , $Default.DownloadsPath )| ?{ $null -ne $_}[0]
+		DefaultParameters = @($ProfileConfig['Parameters'] , $Default.Parameters)| ?{ $null -ne $_}[0]
+		ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $Default.ProfileFolderPath )| ?{ $null -ne $_}[0]
+	}
+
+	$CacheClearParams = @{
+		childNode = $ProfileAlias
+		driveLet = $DriveLetter
+		pathSufix = @($ProfileConfig['PathSuffix'] , $Default.PathSuffix)| ?{ $null -ne $_}[0]
+		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]
+	
+		CopyToCache = @($ProfileConfig['CopyToCache'] , $Default.CopyToCache)| ?{ $null -ne $_}[0]
+		Preserve = @($ProfileConfig['Preserve'] , $Default.Preserve)| ?{ $null -ne $_}[0]
+	}
+
+    
+	# Function to prepare launcher options
+	function Prepare-LauncherOptions {
+		[CmdletBinding()]
+		param (	
+				[Parameter(Mandatory = $true)][hashtable]$inputParams			
+			)						
+			
+			$inputParams.ProfileFolderPath,
+			
+			$AllArgs = @() 
+			$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
+			if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
+			if ($inputParams.DownloadsPath) { $AllArgs += " --download.default_directory='" + $inputParams.DownloadsPath + "'"}
+			$AllArgs +=$inputParams.DefaultParameters
+
+			Write-Verbose "Launcher arguments: $AllArgs"
+
+			return $AllArgs
+	}
+	
 	# Prepare launcher options
 	$OperaLaunchParams = @{
 		FilePath = $launcher
 		ArgumentList = (Prepare-LauncherOptions @launchParams)
 	}
-	
-	$DefaultPathSuffix = '\_side_profiles'
-	$DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-	
-	$DefaultCopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')        
-    $DefaultPreserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
-    
-
-	$CacheClearParams = @{
-		childNode = $ProfileAlias
-		driveLet = $DriveLetter
-		pathSufix = @($ProfileConfig['PathSuffix'] , $DefaultPathSuffix)| ?{ $null -ne $_}[0]
-		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $DefaultExcludedExtensions)| ?{ $null -ne $_}[0]
-	
-		CopyToCache = @($ProfileConfig['CopyToCache'] , $DefaultCopyToCache)| ?{ $null -ne $_}[0]
-		Preserve = @($ProfileConfig['Preserve'] , $DefaultPreserve)| ?{ $null -ne $_}[0]
-	}
-
 
 	function Process-WithProgressBar {
 		[CmdletBinding()]
@@ -144,14 +164,16 @@ Begin {
 			[Alias("DriveLet")][string]$DriveLetter,
 			[Alias("PathSufix")][string]$PathSuffix,
 			[Alias("ProfileName")][string]$ChildNode,
-			[string]$ExcludedExtensions,
-			[string]$SessionStorage = "$DriveLetter\sessionStorage",	
-			[string]$SourceFolder = (Join-Path -Path $DriveLetter -ChildPath $PathSuffix),
-			[string]$ProfileLocation = (Join-Path -Path $SourceFolder -ChildPath $ChildNode)
+			[string]$ExcludedExtensions			
 		)
-
 		begin 		
 		{
+		
+			$PreparedParams = @{
+				SessionStorage = @($ProfileConfig['SessionStorage'], "$DriveLetter\sessionStorage")| ?{ $null -ne $_}[0],
+				SourceFolder = @($ProfileConfig['SourceFolder'], (Join-Path -Path $DriveLetter -ChildPath $PathSuffix))| ?{ $null -ne $_}[0],
+				ProfileLocation = @($ProfileConfig['ProfileLocation'], (Join-Path -Path $SourceFolder -ChildPath $ChildNode))| ?{ $null -ne $_}[0]				
+			}
 		
 			function Get-SessionId {
 				param(
@@ -173,7 +195,6 @@ Begin {
 				return $sessionId;
 			}
 
-
 			function Move-BasedOnExtension {
 				[CmdletBinding()]
 				param (
@@ -181,15 +202,7 @@ Begin {
 					[Parameter(Mandatory = $true)] [string]$ExcludedExtensions,			
 					[Parameter(Mandatory = $true)] [string]$NewFolderPath
 				)
-			
-			
-				# Convert the excluded extensions string into an array
-				$excludedExtensionArray = $ExcludedExtensions -split ","
-			
 							
-				# Convert the excluded extensions string into an array
-				$excludedExtensionArray = $ExcludedExtensions -split ","
-			
 				# Retrieve all files in the original folder path
 				$files = Get-ChildItem -Path $OriginalFolderPath -File
 								
@@ -200,14 +213,20 @@ Begin {
 				if ($filesToMove) {
 					# Ensure the new folder path exists
 					$null = New-Item -ItemType Directory -Force -Path $NewFolderPath
-			
-					# Move the filtered files
-					foreach ($file in $filesToMove) {
-						Move-Item -Path $file.FullName -Destination $NewFolderPath -PassThru
+					if (Test-Path $NewFolderPath) {
+						# Move the filtered files
+						foreach ($file in $filesToMove) {
+							Move-Item -Path $file.FullName -Destination $NewFolderPath -PassThru
+						}
+				
+						# Output the count of moved files
+						Write-Verbose "$($filesToMove.Count) file(s) moved to $NewFolderPath"	
 					}
-			
-					# Output the count of moved files
-					Write-Verbose "$($filesToMove.Count) file(s) moved to $NewFolderPath"
+					else {
+						Write-Error "SessionFolder not created!"
+						exit
+					}
+					
 				}
 				else {
 					Write-Host "No files to move based on the specified extensions."
@@ -216,29 +235,28 @@ Begin {
 			
 
 			# Navigate to the source folder
-			Push-Location
-			Set-Location -Path $SourceFolder
+			#Push-Location
+			#Set-Location -Path $SourceFolder
 			# Retrieve cache directories and process each one
-			$toProcess = Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  }		
+			$toProcess = Get-ChildItem -Path $PreparedParams.ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  }		
 		}
-		
 		process {
 			$toProcess  | %{
-				$currentCacheFolder = $_
-				$parentProfileName = $currentCacheFolder.Parent.Name
-				$newFolder = Join-Path -Path $SessionStorage -ChildPath (join-path $parentProfileName (Get-SessionId -ChildPath $currentCacheFolder))
+				$currentFolder = $_
+				$parentName = $currentFolder.Parent.Name
+				$newFolder = Join-Path -Path $PreparedParams.SessionStorage -ChildPath (join-path $parentName (Get-SessionId -ChildPath $currentFolder))
 			
 				# Check if the new folder already exists
 				if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
 					Write-Debug "The folder already exists."
 				} else {
 					# Change file extensions before moving
-					$currentCacheFolder.FullName | Set-FileExtension
+					$currentFolder.FullName | Set-FileExtension
 		
 					# Define parameters for moving files based on extension
 					$moveParams = @{
 						ExcludedExtension = $ExcludedExtensions
-						OriginalFolderPath = $currentCacheFolder.FullName
+						OriginalFolderPath = $currentFolder.FullName
 						NewFolderPath = $newFolder
 					}
 		
@@ -253,34 +271,7 @@ Begin {
 		}
 	}
 	}
-    
-	# Function to prepare launcher options
-	function Prepare-LauncherOptions {
-		[CmdletBinding()]
-		param (
-			[Parameter(Mandatory)]
-			[alias("Profile")][string]$childNode,
-			[Parameter()]
-			[string[]]$Extensions,
-			[Parameter(Mandatory)]
-			[string]$DownloadsPath,
-			[Parameter(Mandatory)]
-			[string]$DefaultParameters,
-			[Parameter(Mandatory)]
-			[string]$ProfileFolderPath
-		)
 
-		$ProfileParam = '--side-profile-name="' + $childNode + '"'
-
-		$ExtensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
-		if (Test-Path $DownloadsPath)
-		{$DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"}
-
-		$AllArgs = @($ProfileParam, $ExtensionParam, $DownloadParam, $DefaultParameters)
-		Write-Verbose "Launcher arguments: $AllArgs"
-
-		return $AllArgs
-	}
 }
 
 # Process block
@@ -289,29 +280,7 @@ Process {
     
 	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
 
-    Set-Location $driveLetter
-    Set-Location $driveLetter
-    Set-Location $driveLetter
-    Set-Location $driveLetter
-	
     Set-Location $driveLetter	
-	
-    Set-Location $driveLetter	
-    Set-Location $driveLetter
-	
-    Set-Location $driveLetter	
-	
-    Set-Location $driveLetter	
-    Set-Location $driveLetter
-    Set-Location $driveLetter
-	
-    Set-Location $driveLetter	
-	
-    Set-Location $driveLetter	
-    Set-Location $driveLetter
-	
-    Set-Location $driveLetter	
-	
 
 	Write-Verbose "Process options: $OperaLaunchParams"
 
