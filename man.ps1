@@ -142,18 +142,12 @@ Begin {
 		[CmdletBinding()]
 		param (
 			[Alias("DriveLet")][string]$DriveLetter,
-	
 			[Alias("PathSufix")][string]$PathSuffix,
-
-			[string]$ExcludedExtensions,
-	
 			[Alias("ProfileName")][string]$ChildNode,
-	
+			[string]$ExcludedExtensions,
+			[string]$SessionStorage = "$DriveLetter\sessionStorage",	
 			[string]$SourceFolder = (Join-Path -Path $DriveLetter -ChildPath $PathSuffix),
-	
-			[string]$ProfileLocation = (Join-Path -Path $SourceFolder -ChildPath $ChildNode),
-	
-			[string]$SessionStorage = "$DriveLetter\sessionStorage"	
+			[string]$ProfileLocation = (Join-Path -Path $SourceFolder -ChildPath $ChildNode)
 		)
 
 		begin 		
@@ -183,24 +177,24 @@ Begin {
 			function Move-BasedOnExtension {
 				[CmdletBinding()]
 				param (
-					[Parameter(Mandatory = $true)]
-					[string]$OriginalFolderPath,
-			
-					[Parameter(Mandatory = $true)]
-					[string]$ExcludedExtensions,
-			
-					[Parameter(Mandatory = $true)]
-					[string]$NewFolderPath
+					[Parameter(Mandatory = $true)] [string]$OriginalFolderPath,			
+					[Parameter(Mandatory = $true)] [string]$ExcludedExtensions,			
+					[Parameter(Mandatory = $true)] [string]$NewFolderPath
 				)
 			
+			
+				# Convert the excluded extensions string into an array
+				$excludedExtensionArray = $ExcludedExtensions -split ","
+			
+							
 				# Convert the excluded extensions string into an array
 				$excludedExtensionArray = $ExcludedExtensions -split ","
 			
 				# Retrieve all files in the original folder path
 				$files = Get-ChildItem -Path $OriginalFolderPath -File
-			
+								
 				# Filter files to exclude the specified extensions
-				$filesToMove = $files | Where-Object { $_.Extension -notin $excludedExtensionArray }
+				$filesToMove = $files | Where-Object { $_.Extension -notin $ExcludedExtensions -split "," }
 			
 				# Check if there are files to move
 				if ($filesToMove) {
@@ -213,7 +207,7 @@ Begin {
 					}
 			
 					# Output the count of moved files
-					Write-Host "$($filesToMove.Count) file(s) moved to $NewFolderPath"
+					Write-Verbose "$($filesToMove.Count) file(s) moved to $NewFolderPath"
 				}
 				else {
 					Write-Host "No files to move based on the specified extensions."
@@ -239,7 +233,7 @@ Begin {
 					Write-Debug "The folder already exists."
 				} else {
 					# Change file extensions before moving
-					$currentCacheFolder.FullName | Set-FileExtensionThroughPiping
+					$currentCacheFolder.FullName | Set-FileExtension
 		
 					# Define parameters for moving files based on extension
 					$moveParams = @{
@@ -296,6 +290,18 @@ Process {
 	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
 
     Set-Location $driveLetter
+    Set-Location $driveLetter
+    Set-Location $driveLetter
+    Set-Location $driveLetter
+	
+    Set-Location $driveLetter	
+	
+    Set-Location $driveLetter	
+    Set-Location $driveLetter
+	
+    Set-Location $driveLetter	
+	
+    Set-Location $driveLetter	
     Set-Location $driveLetter
     Set-Location $driveLetter
 	
