@@ -25,7 +25,7 @@ A hashtable containing specific configurations for profiles.
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_vin",
+    [string]$ProfileAlias = "a_taboo",
     [string]$DriveLetter = 'E:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{}
@@ -35,8 +35,8 @@ param (
 Begin {
 
 
-import-module ".\lib\FileHelper.psm1"
-    Import-Module ".\moveOutOfCache.ps1"
+#import-module ".\lib\FileHelper.psm1"
+    Import-Module ".$driveletter\operalauncher\moveOutOfCache.ps1"
 
     # Set default values
     $DefaultDownloadsPath = Join-Path $DriveLetter "downloads"
@@ -123,7 +123,7 @@ import-module ".\lib\FileHelper.psm1"
 	}
 
 
-	function SetFileExtensionThroughPiping {
+	function Set-FileExtensionThroughPiping {
 		[CmdletBinding()]
 		param (
 			[Parameter(ValueFromPipeline = $true,Mandatory = $true)]
@@ -363,6 +363,43 @@ import-module ".\lib\FileHelper.psm1"
 		Pop-Location
 	}
 	
+      # Helper function to set file extension if it does not match the expected one
+    function Set-FileExtensionIfNotMatch {
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+	$currentExtension = [System.IO.Path]::GetExtension($FileName)
+	$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
+
+	if ($currentExtension -ne $expectedExtension) {
+	    Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+	    Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
+	}
+    }
+
+    # Helper function to get file extension from 'trid' command output
+    function Get-FileExtensionFromTrid {
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+	$tridOutput = trid $FileName
+
+	if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+	    $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
+	    $extension = ($highestMatch.Groups[2].Value -split '/')[0]
+
+	    # Return the extension
+	    return $extension
+	  }
+	  else {
+	    # Return an empty string if no matches are found
+	    return ""
+	  }
+	}
     
 }
 
