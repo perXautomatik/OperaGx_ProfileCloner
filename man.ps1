@@ -338,7 +338,7 @@ Begin {
 		Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  } | %{
 			$currentCacheFolder = $_
 			$parentProfileName = $currentCacheFolder.Parent.Name
-			$newFolder = Join-Path -Path $SessionStorage -ChildPath (Get-SessionId -ChildPath $currentCacheFolder)
+			$newFolder = Join-Path -Path $SessionStorage -ChildPath (join-path $parentProfileName (Get-SessionId -ChildPath $currentCacheFolder))
 	
 			# Check if the new folder already exists
 			if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
