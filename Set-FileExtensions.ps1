@@ -3,7 +3,7 @@
 		param (
 			[Parameter(ValueFromPipeline = $true,Mandatory = $true)]
 			[ValidateNotNullOrEmpty()]
-			[ValidateScript({				
+			[ValidateScript({
 				if($_.length -gt 0) { $true }
 				else { throw 'empty string or zero length array provided' }
 			})]
@@ -20,7 +20,43 @@
 				PercentComplete = 0
 				CurrentOperation = ""
 			}
+      # Helper function to set file extension if it does not match the expected one
+    function Set-FileExtensionIfNotMatch {
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+		$currentExtension = [System.IO.Path]::GetExtension($FileName)
+		$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
 
+		if ($currentExtension -ne $expectedExtension) {
+			Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+			Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
+		}
+    }
+
+    # Helper function to get file extension from 'trid' command output
+    function Get-FileExtensionFromTrid {
+	[CmdletBinding()]
+	Param (
+	    [Parameter(Mandatory)]
+	    [string]$FileName
+	)
+		$tridOutput = trid $FileName
+
+		if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+			$highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
+			$extension = ($highestMatch.Groups[2].Value -split '/')[0]
+
+			# Return the extension
+			return $extension
+		}
+		else {
+			# Return an empty string if no matches are found
+			return ""
+		}
+	}
 	function filter-HashTableForSplatting {
 		param (
 			$commandName,
@@ -32,7 +68,7 @@
 			$q = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
 			$q | % { $HashedParams.Remove($_) }
 
-			return $HashedParams						
+			return $HashedParams
 		}
 
 
@@ -60,17 +96,17 @@
 
 			# Increment the current count
 			$current++
-
+			if($total -eq 0) { $total = 1}			
 			# Calculate the percentage of completion
 			$percent = ($current / $total) * 100
 
 			# Update the progress parameters
 			$ProgressParams.PercentComplete = $percent
 			$ProgressParams.Status = "Processing item $current of $total"
-			
+
 			#invoke
 			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
-			$ProgressParams = filter-HashTableForSplatting Write-Progress $ProgressParams;						
+			$ProgressParams = filter-HashTableForSplatting Write-Progress $ProgressParams;
 			# Display the progress bar using splatting
 			Write-Progress @ProgressParams
 
@@ -95,15 +131,19 @@
 					$files += Get-ChildItem $item -File
 				}
 			}
-			$ProgressParams.TotalCount = $files.Count;
-			# Process each file with the progress bar
-			$files | Process-WithProgressBar -ProcessBlock {
-				param($file)
-				# Your processing code here
-				Set-FileExtensionIfNotMatch $file.FullName
-			} -ProgressParams $ProgressParams
+			
+			if ($files) {
+				$ProgressParams.TotalCount = $files.Count;
+				# Process each file with the progress bar
+				$files | Process-WithProgressBar -ProcessBlock {
+					param($file)
+					# Your processing code here
+					Set-FileExtensionIfNotMatch $file.FullName
+				} -ProgressParams $ProgressParams
+			}
+			
 
 		}
 		end {
 			# Any cleanup code if needed
-		}	
+		}

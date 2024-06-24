@@ -38,13 +38,18 @@ Begin {
     # Override defaults with specific profile configurations if provided
 	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
 
+	Push-Location 
+	cd $DriveLetter
+	$global:setFilextPath = (Resolve-Path -Relative -path "./Set-FileExtensions.ps1");
+	Pop-Location
+
 	$Default = @{
 		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
 		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
 		DownloadsPath = Join-Path $DriveLetter "downloads"
 		ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
 			
-		PathSuffix = '\_side_profiles'
+		PathSufix = '\_side_profiles'
 		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		
 		CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')        
@@ -55,30 +60,23 @@ Begin {
 		Profile = $ProfileAlias
 		Extensions = @($ProfileConfig['Extensions'] , $Default.ExtensionsToLoad)| ?{ $null -ne $_}[0]
 		DownloadsPath = @($ProfileConfig['DownloadsPath'] , $Default.DownloadsPath )| ?{ $null -ne $_}[0]
-		DefaultParameters = @($ProfileConfig['Parameters'] , $Default.Parameters)| ?{ $null -ne $_}[0]
-		ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $Default.ProfileFolderPath )| ?{ $null -ne $_}[0]
+		DefaultParameters = @($ProfileConfig['Parameters'] , $Default.Parameters)| ?{ $null -ne $_}[0]		
 	}
 
 	$CacheClearParams = @{
-		childNode = $ProfileAlias
 		driveLet = $DriveLetter
-		pathSufix = @($ProfileConfig['PathSuffix'] , $Default.PathSuffix)| ?{ $null -ne $_}[0]
-		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]
-	
+		PathSufix = @($ProfileConfig['PathSufix'] , $Default.PathSufix)| ?{ $null -ne $_}[0]
+		ChildNode = $ProfileAlias
 		CopyToCache = @($ProfileConfig['CopyToCache'] , $Default.CopyToCache)| ?{ $null -ne $_}[0]
 		Preserve = @($ProfileConfig['Preserve'] , $Default.Preserve)| ?{ $null -ne $_}[0]
+		
+		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]					
 	}
 
     
 	# Function to prepare launcher options
 	function Prepare-LauncherOptions {
-		[CmdletBinding()]
-		param (	
-				[Parameter(Mandatory = $true)][hashtable]$inputParams			
-			)						
-			
-			$inputParams.ProfileFolderPath,
-			
+		[CmdletBinding()] param (	 [Parameter(Mandatory = $true)][hashtable]$inputParams )											
 			$AllArgs = @() 
 			$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
 			if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
@@ -93,7 +91,7 @@ Begin {
 	# Prepare launcher options
 	$OperaLaunchParams = @{
 		FilePath = $launcher
-		ArgumentList = (Prepare-LauncherOptions @launchParams)
+		ArgumentList = (Prepare-LauncherOptions -inputParams $launchParams)
 	}
 
 	function Process-WithProgressBar {
@@ -152,8 +150,8 @@ Begin {
 			# Get the list of valid parameter names for the function
 			$validParameters = (Get-Command $commandName).Parameters.Keys
 			# Filter out invalid parameters
-			$q = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
-			$q | % { $HashedParams.Remove($_) }
+			$setFilext = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
+			$setFilext | % { $HashedParams.Remove($_) }
 
 			return $HashedParams						
 		}
@@ -161,20 +159,25 @@ Begin {
 	function Clear-Cache {
 		[CmdletBinding()]
 		param (
-			[Alias("DriveLet")][string]$DriveLetter,
-			[Alias("PathSufix")][string]$PathSuffix,
-			[Alias("ProfileName")][string]$ChildNode,
-			[string]$ExcludedExtensions			
-		)
+			$params,
+			$driveLet,
+			$PathSufix,
+			$SourceFolder,
+			$ChildNode,
+			$ProfileFolderPath
+		 )
 		begin 		
 		{
 		
 			$PreparedParams = @{
-				SessionStorage = @($ProfileConfig['SessionStorage'], "$DriveLetter\sessionStorage")| ?{ $null -ne $_}[0],
-				SourceFolder = @($ProfileConfig['SourceFolder'], (Join-Path -Path $DriveLetter -ChildPath $PathSuffix))| ?{ $null -ne $_}[0],
-				ProfileLocation = @($ProfileConfig['ProfileLocation'], (Join-Path -Path $SourceFolder -ChildPath $ChildNode))| ?{ $null -ne $_}[0]				
+				SessionStorage = "$($params.DriveLet)\sessionStorage"
+				SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
+				ProfileLocation = ""
 			}
-		
+
+			$PreparedParams.ProfileLocation = 
+			Join-Path -Path $PreparedParams.SourceFolder -ChildPath $params.ChildNode
+
 			function Get-SessionId {
 				param(
 					$childPath
@@ -183,9 +186,9 @@ Begin {
 				$internalItems = ($childPath | get-childitem );
 				$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
 				$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
-				$q = $lastFile -$firtFile
+				$setFilext = $lastFile -$firtFile
 		
-				if($q.Days -gt 0)
+				if($setFilext.Days -gt 0)
 				{
 					$from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
 					$to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
@@ -246,30 +249,37 @@ Begin {
 				$parentName = $currentFolder.Parent.Name
 				$newFolder = Join-Path -Path $PreparedParams.SessionStorage -ChildPath (join-path $parentName (Get-SessionId -ChildPath $currentFolder))
 			
-				# Check if the new folder already exists
-				if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
-					Write-Debug "The folder already exists."
-				} else {
-					# Change file extensions before moving
-					$currentFolder.FullName | Set-FileExtension
-		
-					# Define parameters for moving files based on extension
-					$moveParams = @{
-						ExcludedExtension = $ExcludedExtensions
-						OriginalFolderPath = $currentFolder.FullName
-						NewFolderPath = $newFolder
-					}
-		
-					# Move files based on the defined parameters
-					Move-BasedOnExtension @moveParams
-				}	
+				if ((Get-ChildItem $currentFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+					# Check if the new folder already exists
+					if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+						Write-Debug "The folder already exists."
+					} else {
+						
+						# Change file extensions before moving
+						$currentFolder.FullName | & $global:setFilextPath
+
+						# Define parameters for moving files based on extension
+						$moveParams = @{
+							ExcludedExtension = $ExcludedExtensions
+							OriginalFolderPath = $currentFolder.FullName
+							NewFolderPath = $newFolder
+						}
+						
+						# Move files based on the defined parameters
+						Move-BasedOnExtension @moveParams
+					}	
+				}
+				else {
+					Write-Debug "the folder is empty, skipping"
+				}
+				
+			}
 		}
 
 		end {
 			# Return to the original location
 			Pop-Location	
 		}
-	}
 	}
 
 }
