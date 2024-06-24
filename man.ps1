@@ -60,7 +60,7 @@ Begin {
     $PathSuffix = @($ProfileConfig['PathSuffix'] , $DefaultPathSuffix)| ?{ $null -ne $_}[0]
     $ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $DefaultExcludedExtensions)| ?{ $null -ne $_}[0]
 
-	$paramx = @{
+	$CacheClearParams = @{
 		driveLet = $DriveLetter
 		pathSufix = $PathSuffix
 		childNode = $ProfileAlias
@@ -102,26 +102,6 @@ Begin {
 
 		return $AllArgs
 	}
-
-	# Function to launch the process
-	function Invoke-LaunchProcess {
-		[CmdletBinding()]
-		param (
-			[Parameter(Mandatory)]
-			[string]$FilePath,
-			[Parameter(Mandatory)]
-			[string[]]$ArgumentList
-		)
-
-		$ProcessOptions = @{
-			FilePath     = $FilePath
-			ArgumentList = $ArgumentList
-		}
-		Write-Verbose "Process options: $ProcessOptions"
-
-		Start-Process @ProcessOptions -Wait
-	}
-
 
 	function Set-FileExtensionThroughPiping {
 		[CmdletBinding()]
@@ -247,8 +227,9 @@ Begin {
 		ArgumentList = $AllArgs
 		}; echo $processOptions
 
-		# Launch the Opera profile
-		Invoke-LaunchProcess @processOptions
+		Write-Verbose "Process options: $ProcessOptions"
+
+		Start-Process @ProcessOptions -Wait 
 	}
 
 	function Move-BasedOnExtension {
@@ -370,13 +351,13 @@ Begin {
 	    [Parameter(Mandatory)]
 	    [string]$FileName
 	)
-	$currentExtension = [System.IO.Path]::GetExtension($FileName)
-	$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
+		$currentExtension = [System.IO.Path]::GetExtension($FileName)
+		$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
 
-	if ($currentExtension -ne $expectedExtension) {
-	    Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
-	    Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
-	}
+		if ($currentExtension -ne $expectedExtension) {
+			Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+			Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
+		}
     }
 
     # Helper function to get file extension from 'trid' command output
@@ -386,26 +367,26 @@ Begin {
 	    [Parameter(Mandatory)]
 	    [string]$FileName
 	)
-	$tridOutput = trid $FileName
+		$tridOutput = trid $FileName
 
-	if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-	    $highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
-	    $extension = ($highestMatch.Groups[2].Value -split '/')[0]
+		if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
+			$highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
+			$extension = ($highestMatch.Groups[2].Value -split '/')[0]
 
-	    # Return the extension
-	    return $extension
-	  }
-	  else {
-	    # Return an empty string if no matches are found
-	    return ""
-	  }
+			# Return the extension
+			return $extension
+		}
+		else {
+			# Return an empty string if no matches are found
+			return ""
+		}
 	}
     
 }
 
 # Process block
 Process {
-	Clear-Cache @paramx
+	Clear-Cache @CacheClearParams
 
     Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
 
@@ -415,7 +396,7 @@ Process {
 
 # End block
 End {
-    & $driveLetter\OperaLauncher\PurgeProfile.ps1 @paramx -CopyToCache $copyToCache -preserve $preserve
+    & $driveLetter\OperaLauncher\PurgeProfile.ps1 @CacheClearParams -CopyToCache $copyToCache -preserve $preserve
 
-	Clear-Cache @paramx
+	Clear-Cache @CacheClearParams
 }
