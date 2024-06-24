@@ -1,180 +1,94 @@
+[CmdletBinding()]
+param (
+  [Parameter(Mandatory = $true)]
+  [string] $ConfigFilePath = "CacheSort.ini"
+)
 
-# Main function to move files out from cache
-<## Example of calling the main function
-MoveOutFromCache -ProfileName "a_vin" -DriveLetter "E:"
-#>
-function MoveOutFromCache {
-    [CmdletBinding()]
-    param (
-	[string]$ProfileName = "a_vin",
-	[string]$DriveLetter = "E:",
-	[string]$CacheFolderName = "cache",
-	[string]$InnerCacheFolder = "cache_data",
-	[string[]]$ExcludedExtensions = @(".pam", ".zip", ".tar", ".gz", ".null", ".gpg", ".woff2", ".woff", ".bs", ".ini")
-    )
+# Function to read settings from the INI file
+function Get-CacheSortConfig {
+  param (
+    [string] $FilePath = $ConfigFilePath
+  )
 
-    $ProfileLocation = "$DriveLetter\_side_profiles\$ProfileName\"
-    $SessionStorage = "$DriveLetter\sessionStorage\$ProfileName"
-    $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
-    $newFolderPath = Join-Path -Path $SessionStorage -ChildPath $dateTime
-        New-Item -ItemType Directory -Force -Path $newFolderPath
-
-    $cachePath = Join-Path -Path $ProfileLocation -ChildPath $CacheFolderName
-    $innerCachePath = Join-Path -Path $cachePath -ChildPath $InnerCacheFolder
-    $filesInCache = Get-ChildItem -Path $innerCachePath -File
-    $filesNotMoved = @()
-
-    foreach ($file in $filesInCache) {
-        if ("" -ne $file.Extension -and $file.Extension -notin $ExcludedExtensions ) {
-            Move-Item -Path $file.FullName -Destination $newFolderPath
-        } else {
-            $checksum = Get-FileHash -Path $file.FullName -Algorithm MD5
-            $filesNotMoved += "$($file.Name):$($checksum.Hash)"
-        }
+  if (!(Test-Path $FilePath)) {
+    Write-Warning "The configuration file '$FilePath' not found. Using default settings."
+    return @{
+      SourceFolder = ""
+      TargetFolderPattern = "{0}\cache\{1}"
+      ExcludedExtensions = "dat,db"
+      SessionIdPattern = "yyMMdd_HHmmss"
+      UseSessionId = $true
+      MoveFiles = $true
     }
+  }
 
-    Create-ChecksumFile -SessionStorage $SessionStorage -FilesNotMoved $filesNotMoved
+  $config = Get-Content -Path $FilePath | ConvertFrom-Json
 
-    Clear-Cache @{
-        DriveLetter = $DriveLetter
-        PathSuffix = $DriveLetter  
-        ChildNode  = ""
-        ExcludedExtension  = ""
-    }
+  # Validate and potentially set default values for missing settings
+  $config | Add-Member -MemberType NoteProperty -Name SourceFolder -Value (if ($config.SourceFolder) { $config.SourceFolder } else { "" })
+  $config | Add-Member -MemberType NoteProperty -Name TargetFolderPattern -Value (if ($config.TargetFolderPattern) { $config.TargetFolderPattern } else { "{0}\cache\{1}" })
+  $config | Add-Member -MemberType NoteProperty -Name ExcludedExtensions -Value (if ($config.ExcludedExtensions) { $config.ExcludedExtensions } else { "dat,db" })
+  $config | Add-Member -MemberType NoteProperty -Name SessionIdPattern -Value (if ($config.SessionIdPattern) { $config.SessionIdPattern } else { "yyMMdd_HHmmss" })
+  <span class="math-inline">config \| Add\-Member \-MemberType NoteProperty \-Name UseSessionId \-Value \(if \(</span>({$config.UseSessionId}).is[bool]) { $config.UseSessionId } else { $true })
+  <span class="math-inline">config \| Add\-Member \-MemberType NoteProperty \-Name MoveFiles \-Value \(if \(</span>({$config.MoveFiles}).is[bool]) { $config.MoveFiles } else { $true })
+
+  return $config
 }
 
-function Move-BasedOnExtension {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[string]$OriginalFolderPath,
-	[Parameter(Mandatory)]
-	[string]$ExcludedExtension,
-	[Parameter(Mandatory)]
-	[string]$NewFolderPath
-    )
-    $exect = @($ExcludedExtension -split ",")
-    $unfiltered = Get-ChildItem -Path $OriginalFolderPath -File
-    $withExtensions = $unfiltered | Where-Object { $_.Extension }
-    $filteredToMove = $withExtensions | Where-Object { $_.Extension -notin $exect }
-    $zz = $filteredToMove.Length
-    $z = [bool]$zz -gt 0
-
-    if ($z) {
-	New-Item -ItemType Directory -Force -Path $NewFolderPath
-	$filteredToMove | ForEach-Object { Move-Item -Path $_.FullName -Destination $NewFolderPath -PassThru }
-	Write-Host ("Moved " + $filteredToMove.Length + " items to " + $NewFolderPath)
-    } else {
-	Write-Host "No files to move."
-    }
-}
-
-# Function to get session ID based on file creation times
+# Function to get the session ID (if enabled in config)
 function Get-SessionId {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[string]$ChildPath
-    )
+  param (
+    [string] $ChildPath,
+    [hashtable] $Config
+  )
 
+  if ($Config.UseSessionId) {
     $internalItems = Get-ChildItem -Path $ChildPath
-    $firstFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
+    $firtFile = ($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime
     $lastFile = ($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime
-    $q = $lastFile - $firstFile
+    $sessionId = (Get-Date -Format $Config.SessionIdPattern)
+  } else {
+    $sessionId = ""
+  }
 
-    if ($q.Days -gt 0) {
-	$from = Get-Date -Date $firstFile -Format "yyMMdd_HHmmss"
-	$to = Get-Date -Date $lastFile -Format "yyMMdd_HHmmss"
+  return $sessionId
+}
+
+# Function to move files based on extension
+function Move-BasedOnExtension {
+  param (
+    [string] $SourceFolderPath,
+    [string] $ExcludedExtensions,
+    [string] $TargetFolderPath
+  )
+
+  $files = Get-ChildItem -Path $SourceFolderPath -File
+
+  $filesToMove = $files | Where-Object { $_.Extension -notin $ExcludedExtensions.Split(",") }
+
+  if ($filesToMove) {
+    New-Item -ItemType Directory -Force -Path $TargetFolderPath | Out-Null
+
+    if (Test-Path $TargetFolderPath) {
+      Move-Item -Path $filesToMove.FullName -Destination <span class="math-inline">TargetFolderPath \-PassThru
+Write\-Verbose "</span>($filesToMove.Count) file(s) moved to $TargetFolderPath"
+    } else {
+      Write-Error "Failed to create target folder: $TargetFolderPath"
+      exit
     }
-
-    $sessionId = Get-Date -Format "yyMMdd_HHmmss"
-    return $sessionId
+  } else {
+    Write-Verbose "No files to move based on the specified extensions."
+  }
 }
 
-# Function to clear cache with checksum comparison
-function Clear-Cache {
-    [CmdletBinding()]
-    param (
-	[Alias("DriveLet")]
-	[string]$DriveLetter,
-	[string]$PathSuffix,
-	[Alias("ProfileName")]
-	[string]$ChildNode,
-	[string]$ExcludedExtensions,
-    [string]$sourceFold = (Join-Path -Path $DriveLetter -ChildPath $PathSuffix),
-    [string]$profileLocation = (Join-Path -Path $sourceFold -ChildPath $ChildNode),
-    [string]$sessionStorage = "$DriveLetter\sessionStorage"
-    )
+# Read configuration from INI file
+$config = Get-CacheSortConfig
 
+# Process cache directories
+$sourceFolders = Get-ChildItem -Path $config.SourceFolder -Directory
 
+foreach ($folder in $sourceFolders) {
+  $parentName = $folder.Name
+  $targetFolder = Join-Path -Path ($config.TargetFolderPattern -f $folder.FullName, (Get-SessionId -ChildPath $folder.FullName -Config $config))
 
-    Push-Location
-    Set-Location $sourceFold
-
-    $checksumFilePattern = ".cache_checksums_*.txt"
-    $checksumFiles = Get-ChildItem -Path $sessionStorage -Filter $checksumFilePattern -Hidden -File
-
-    foreach ($checksumFile in $checksumFiles) {
-	$filesChanged = Compare-Checksums -ChecksumFilePath $checksumFile.FullName -ProfileLocation $profileLocation
-
-	foreach ($file in $filesChanged) {
-	    $file.FullName | Set-FileExtensionThroughPiping
-	}
-
-	$filesAfterPiping = Get-ChildItem -Path $profileLocation -File
-	$filesRenamed = Compare-Object -ReferenceObject $currentFiles -DifferenceObject $filesAfterPiping -Property Name | Where-Object { $_.SideIndicator -eq "=>" }
-
-	if ($filesRenamed) {
-	    $newFolderPath = Join-Path -Path $sessionStorage -ChildPath (Get-Date -Format "yyyyMMdd_HHmmss")
-	    Move-BasedOnExtension -OriginalFolderPath $profileLocation -ExcludedExtension $ExcludedExtensions -NewFolderPath $newFolderPath
-	}
-    }
-
-    Pop-Location
-}
-
-# Function to create a checksum file for files not moved
-function Create-ChecksumFile {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[string]$SessionStorage,
-	[Parameter(Mandatory)]
-	[string[]]$FilesNotMoved
-    )
-
-    $dateTime = Get-Date -Format "yyyyMMdd_HHmmss"
-    $checksumFile = Join-Path -Path $SessionStorage -ChildPath ".cache_checksums_$dateTime.txt"
-
-    $filesNotMoved | Out-File -FilePath $checksumFile -Force
-    $fileInfo = Get-Item -Path $checksumFile
-    $fileInfo.Attributes = 'Hidden'
-}
-
-# Function to compare current files with checksums and identify changes
-function Compare-Checksums {
-    [CmdletBinding()]
-    param (
-	[Parameter(Mandatory)]
-	[string]$ChecksumFilePath,
-	[Parameter(Mandatory)]
-	[string]$ProfileLocation
-    )
-
-    $previousChecksums = Get-Content -Path $ChecksumFilePath
-    $currentFiles = Get-ChildItem -Path $ProfileLocation -File
-    $filesChanged = @()
-
-    foreach ($file in $currentFiles) {
-	$currentChecksum = Get-FileHash -Path $file.FullName -Algorithm MD5
-	$previousEntry = $previousChecksums | Where-Object { $_ -match "^$($file.Name):" }
-
-	if ($previousEntry -and ($previousEntry.Split(':')[1] -ne $currentChecksum.Hash)) {
-	    $filesChanged += $file
-	}
-    }
-
-    Remove-Item -Path $ChecksumFilePath -Force
-    return $filesChanged
-}
-
+  if ((Get-ChildItem $folder -ErrorAction SilentlyContinue).Length -gt
