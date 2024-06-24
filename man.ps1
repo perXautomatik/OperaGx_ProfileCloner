@@ -51,6 +51,12 @@ Begin {
 		DefaultParameters = @($ProfileConfig['Parameters'] , $DefaultParameters)| ?{ $null -ne $_}[0]
 		ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $DefaultProfileFolderPath )| ?{ $null -ne $_}[0]
 	}
+
+	# Prepare launcher options
+	$OperaLaunchParams = @{
+		FilePath = $launcher
+		ArgumentList = (Prepare-LauncherOptions @launchParams)
+	}
 	
 	$DefaultPathSuffix = '\_side_profiles'
 	$DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
@@ -69,33 +75,6 @@ Begin {
 		Preserve = @($ProfileConfig['Preserve'] , $DefaultPreserve)| ?{ $null -ne $_}[0]
 	}
 
-	# Function to prepare launcher options
-	function Prepare-LauncherOptions {
-		[CmdletBinding()]
-		param (
-			[Parameter(Mandatory)]
-			[string]$Profile,
-			[Parameter()]
-			[string[]]$Extensions,
-			[Parameter(Mandatory)]
-			[string]$DownloadsPath,
-			[Parameter(Mandatory)]
-			[string]$DefaultParameters,
-			[Parameter(Mandatory)]
-			[string]$ProfileFolderPath
-		)
-
-		$ProfileParam = '--side-profile-name="' + $Profile + '"'
-
-		$ExtensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
-		if (Test-Path $DownloadsPath)
-		{$DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"}
-
-		$AllArgs = @($ProfileParam, $ExtensionParam, $DownloadParam, $DefaultParameters)
-		Write-Verbose "Launcher arguments: $AllArgs"
-
-		return $AllArgs
-	}
 
 	function Process-WithProgressBar {
 		[CmdletBinding()]
@@ -159,67 +138,6 @@ Begin {
 			return $HashedParams						
 		}
 
-	function Move-BasedOnExtension {
-		[CmdletBinding()]
-		param (
-			[Parameter(Mandatory = $true)]
-			[string]$OriginalFolderPath,
-	
-			[Parameter(Mandatory = $true)]
-			[string]$ExcludedExtensions,
-	
-			[Parameter(Mandatory = $true)]
-			[string]$NewFolderPath
-		)
-	
-		# Convert the excluded extensions string into an array
-		$excludedExtensionArray = $ExcludedExtensions -split ","
-	
-		# Retrieve all files in the original folder path
-		$files = Get-ChildItem -Path $OriginalFolderPath -File
-	
-		# Filter files to exclude the specified extensions
-		$filesToMove = $files | Where-Object { $_.Extension -notin $excludedExtensionArray }
-	
-		# Check if there are files to move
-		if ($filesToMove) {
-			# Ensure the new folder path exists
-			$null = New-Item -ItemType Directory -Force -Path $NewFolderPath
-	
-			# Move the filtered files
-			foreach ($file in $filesToMove) {
-				Move-Item -Path $file.FullName -Destination $NewFolderPath -PassThru
-			}
-	
-			# Output the count of moved files
-			Write-Host "$($filesToMove.Count) file(s) moved to $NewFolderPath"
-		}
-		else {
-			Write-Host "No files to move based on the specified extensions."
-		}
-	}
-	
-
-    function Get-SessionId {
-		param(
-			$childPath
-		)
-
-		$internalItems = ($childPath | get-childitem );
-		$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
-		$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
-		$q = $lastFile -$firtFile
-
-		if($q.Days -gt 0)
-		{
-			$from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
-			$to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
-		}
-
-		$sessionId = (Get-Date -Format "yyMMdd_HHmmss");
-		return $sessionId;
-    }
-
 	function Clear-Cache {
 		[CmdletBinding()]
 		param (
@@ -237,56 +155,153 @@ Begin {
 	
 			[string]$SessionStorage = "$DriveLetter\sessionStorage"	
 		)
-	
+
+		begin 		
+		{
+		
+			function Get-SessionId {
+				param(
+					$childPath
+				)
+		
+				$internalItems = ($childPath | get-childitem );
+				$firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
+				$lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
+				$q = $lastFile -$firtFile
+		
+				if($q.Days -gt 0)
+				{
+					$from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
+					$to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
+				}
+		
+				$sessionId = (Get-Date -Format "yyMMdd_HHmmss");
+				return $sessionId;
+			}
+
+
+			function Move-BasedOnExtension {
+				[CmdletBinding()]
+				param (
+					[Parameter(Mandatory = $true)]
+					[string]$OriginalFolderPath,
+			
+					[Parameter(Mandatory = $true)]
+					[string]$ExcludedExtensions,
+			
+					[Parameter(Mandatory = $true)]
+					[string]$NewFolderPath
+				)
+			
+				# Convert the excluded extensions string into an array
+				$excludedExtensionArray = $ExcludedExtensions -split ","
+			
+				# Retrieve all files in the original folder path
+				$files = Get-ChildItem -Path $OriginalFolderPath -File
+			
+				# Filter files to exclude the specified extensions
+				$filesToMove = $files | Where-Object { $_.Extension -notin $excludedExtensionArray }
+			
+				# Check if there are files to move
+				if ($filesToMove) {
+					# Ensure the new folder path exists
+					$null = New-Item -ItemType Directory -Force -Path $NewFolderPath
+			
+					# Move the filtered files
+					foreach ($file in $filesToMove) {
+						Move-Item -Path $file.FullName -Destination $NewFolderPath -PassThru
+					}
+			
+					# Output the count of moved files
+					Write-Host "$($filesToMove.Count) file(s) moved to $NewFolderPath"
+				}
+				else {
+					Write-Host "No files to move based on the specified extensions."
+				}
+			}
+			
+
 			# Navigate to the source folder
 			Push-Location
 			Set-Location -Path $SourceFolder
-		
 			# Retrieve cache directories and process each one
-			Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  } | %{
-			$currentCacheFolder = $_
-			$parentProfileName = $currentCacheFolder.Parent.Name
-			$newFolder = Join-Path -Path $SessionStorage -ChildPath (join-path $parentProfileName (Get-SessionId -ChildPath $currentCacheFolder))
-	
-			# Check if the new folder already exists
-			if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
-				Write-Debug "The folder already exists."
-			} else {
-				# Change file extensions before moving
-				$currentCacheFolder.FullName | Set-FileExtensionThroughPiping
-	
-				# Define parameters for moving files based on extension
-				$moveParams = @{
-					ExcludedExtension = $ExcludedExtensions
-					OriginalFolderPath = $currentCacheFolder.FullName
-					NewFolderPath = $newFolder
-				}
-	
-				# Move files based on the defined parameters
-				Move-BasedOnExtension @moveParams
-			}
+			$toProcess = Get-ChildItem -Path $ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  }		
 		}
-	
-		# Return to the original location
-		Pop-Location
+		
+		process {
+			$toProcess  | %{
+				$currentCacheFolder = $_
+				$parentProfileName = $currentCacheFolder.Parent.Name
+				$newFolder = Join-Path -Path $SessionStorage -ChildPath (join-path $parentProfileName (Get-SessionId -ChildPath $currentCacheFolder))
+			
+				# Check if the new folder already exists
+				if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+					Write-Debug "The folder already exists."
+				} else {
+					# Change file extensions before moving
+					$currentCacheFolder.FullName | Set-FileExtensionThroughPiping
+		
+					# Define parameters for moving files based on extension
+					$moveParams = @{
+						ExcludedExtension = $ExcludedExtensions
+						OriginalFolderPath = $currentCacheFolder.FullName
+						NewFolderPath = $newFolder
+					}
+		
+					# Move files based on the defined parameters
+					Move-BasedOnExtension @moveParams
+				}	
+		}
+
+		end {
+			# Return to the original location
+			Pop-Location	
+		}
+	}
 	}
     
+	# Function to prepare launcher options
+	function Prepare-LauncherOptions {
+		[CmdletBinding()]
+		param (
+			[Parameter(Mandatory)]
+			[alias("Profile")][string]$childNode,
+			[Parameter()]
+			[string[]]$Extensions,
+			[Parameter(Mandatory)]
+			[string]$DownloadsPath,
+			[Parameter(Mandatory)]
+			[string]$DefaultParameters,
+			[Parameter(Mandatory)]
+			[string]$ProfileFolderPath
+		)
+
+		$ProfileParam = '--side-profile-name="' + $childNode + '"'
+
+		$ExtensionParam = if ($Extensions) { " --load-extension='" + ($Extensions -join ',') + "'" } else { "" }
+		if (Test-Path $DownloadsPath)
+		{$DownloadParam = " --download.default_directory='" + $DownloadsPath + "'"}
+
+		$AllArgs = @($ProfileParam, $ExtensionParam, $DownloadParam, $DefaultParameters)
+		Write-Verbose "Launcher arguments: $AllArgs"
+
+		return $AllArgs
+	}
 }
 
 # Process block
 Process {
 	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams)
     
-	# Prepare launcher options
-	
-	$OperaLaunchParams = @{
-		FilePath = $launcher
-		ArgumentList = (Prepare-LauncherOptions @launchParams)
-	}
-
 	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
 
     Set-Location $driveLetter
+    Set-Location $driveLetter
+    Set-Location $driveLetter
+	
+    Set-Location $driveLetter	
+	
+    Set-Location $driveLetter	
     Set-Location $driveLetter
 	
     Set-Location $driveLetter	
