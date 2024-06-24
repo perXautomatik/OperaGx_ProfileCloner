@@ -34,39 +34,23 @@ param (
 # Begin block
 Begin {
 
-
-#import-module ".\lib\FileHelper.psm1"
-    Import-Module ".$driveletter\operalauncher\moveOutOfCache.ps1"
-
-    # Set default values
-    $DefaultDownloadsPath = Join-Path $DriveLetter "downloads"
-    $DefaultProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
-    $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
-    $DefaultPathSuffix = '\_side_profiles'
-    $DefaultCopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
-    $DefaultPreserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
-
-    $DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
-
+    # Set default values	
     # Override defaults with specific profile configurations if provided
+	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
 
-    $ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
-    $DownloadsPath = @($ProfileConfig['DownloadsPath'] , $DefaultDownloadsPath )| ?{ $null -ne $_}[0]
-    $ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $DefaultProfileFolderPath    )| ?{ $null -ne $_}[0]
-    $CopyToCache = @($ProfileConfig['CopyToCache'] , $DefaultCopyToCache)| ?{ $null -ne $_}[0]
-    $Preserve = @($ProfileConfig['Preserve'] , $DefaultPreserve)| ?{ $null -ne $_}[0]
-	$ExtensionsToLoad = @($ProfileConfig['Extensions'] , (Get-ChildItem -Path "$DriveLetter\crx").FullName)| ?{ $null -ne $_}[0]
+
+    $DefaultParameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
 	$Parameters = @($ProfileConfig['Parameters'] , $DefaultParameters)| ?{ $null -ne $_}[0]
-    $PathSuffix = @($ProfileConfig['PathSuffix'] , $DefaultPathSuffix)| ?{ $null -ne $_}[0]
-    $ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $DefaultExcludedExtensions)| ?{ $null -ne $_}[0]
 
-	$CacheClearParams = @{
-		driveLet = $DriveLetter
-		pathSufix = $PathSuffix
-		childNode = $ProfileAlias
-	}
+    $DefaultProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
+    $ProfileFolderPath = @($ProfileConfig['ProfileFolderPath'] , $DefaultProfileFolderPath )| ?{ $null -ne $_}[0]
 
+    $DefaultDownloadsPath = Join-Path $DriveLetter "downloads"
+    $DownloadsPath = @($ProfileConfig['DownloadsPath'] , $DefaultDownloadsPath )| ?{ $null -ne $_}[0]
 
+	$DefaultExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
+	$ExtensionsToLoad = @($ProfileConfig['Extensions'] , $DefaultExtensionsToLoad)| ?{ $null -ne $_}[0]
+	
 	$launchParams = @{
 		Profile = $ProfileAlias
 		Extensions = $ExtensionsToLoad
@@ -74,6 +58,27 @@ Begin {
 		DefaultParameters = $Parameters
 		ProfileFolderPath = $ProfileFolderPath
 	}
+	
+	$DefaultPathSuffix = '\_side_profiles'
+	$PathSuffix = @($ProfileConfig['PathSuffix'] , $DefaultPathSuffix)| ?{ $null -ne $_}[0]
+
+	$DefaultExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+	$ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $DefaultExcludedExtensions)| ?{ $null -ne $_}[0]
+	
+	$CacheClearParams = @{
+		childNode = $ProfileAlias
+		driveLet = $DriveLetter
+		pathSufix = $PathSuffix
+		ExcludedExtensions = $ExcludedExtensions
+	}
+
+		
+    $DefaultPreserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
+    $DefaultCopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')
+    
+    $Preserve = @($ProfileConfig['Preserve'] , $DefaultPreserve)| ?{ $null -ne $_}[0]
+    $CopyToCache = @($ProfileConfig['CopyToCache'] , $DefaultCopyToCache)| ?{ $null -ne $_}[0]
+		
 
 	# Function to prepare launcher options
 	function Prepare-LauncherOptions {
@@ -101,56 +106,6 @@ Begin {
 		Write-Verbose "Launcher arguments: $AllArgs"
 
 		return $AllArgs
-	}
-
-	function Set-FileExtensionThroughPiping {
-		[CmdletBinding()]
-		param (
-			[Parameter(ValueFromPipeline = $true,Mandatory = $true)]
-			[ValidateNotNullOrEmpty()]
-			[ValidateScript({				
-				if($_.length -gt 0) { $true }
-				else { throw 'empty string or zero length array provided' }
-			})]
-			$InputObject
-		)
-
-		begin {
-
-			# Define the progress parameters
-			$ProgressParams = @{
-				TotalCount = 0
-				Activity = "Setting file extensions"
-				Status = ""
-				PercentComplete = 0
-				CurrentOperation = ""
-			}
-
-		}
-		process {
-
-			foreach ($item in $InputObject) {
-				# Determine if the input is a file or directory
-				if (Test-Path $item -PathType Leaf) {
-					# It's a file, add to processing list
-					$files += Get-Item $item
-				} elseif (Test-Path $item -PathType Container) {
-					# It's a directory, add all files within to processing list
-					$files += Get-ChildItem $item -File
-				}
-			}
-			$ProgressParams.TotalCount = $files.Count;
-			# Process each file with the progress bar
-			$files | Process-WithProgressBar -ProcessBlock {
-				param($file)
-				# Your processing code here
-				Set-FileExtensionIfNotMatch $file.FullName
-			} -ProgressParams $ProgressParams
-
-		}
-		end {
-			# Any cleanup code if needed
-		}	
 	}
 
 	function Process-WithProgressBar {
@@ -217,20 +172,7 @@ Begin {
 
 
 
-	function Launch_opera_profile {
-
-		# Prepare launcher options
-		$AllArgs = Prepare-LauncherOptions @launchParams
-
-		$processOptions = @{
-		FilePath = $launcher
-		ArgumentList = $AllArgs
-		}; echo $processOptions
-
-		Write-Verbose "Process options: $ProcessOptions"
-
-		Start-Process @ProcessOptions -Wait 
-	}
+	function Launch_opera_profile {}
 
 	function Move-BasedOnExtension {
 		[CmdletBinding()]
@@ -299,6 +241,8 @@ Begin {
 			[Alias("DriveLet")][string]$DriveLetter = "E:",
 	
 			[Alias("PathSufix")] [string]$PathSuffix = "\_side_profiles",
+
+			[string]$ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf",
 	
 			[Alias("ProfileName")] [string]$ChildNode,
 	
@@ -306,9 +250,7 @@ Begin {
 	
 			[string]$ProfileLocation = (Join-Path -Path $SourceFolder -ChildPath $ChildNode),
 	
-			[string]$SessionStorage = "$DriveLetter\sessionStorage",
-	
-			[string]$ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
+			[string]$SessionStorage = "$DriveLetter\sessionStorage"	
 		)
 	
 		# Navigate to the source folder
@@ -344,6 +286,7 @@ Begin {
 		Pop-Location
 	}
 	
+	
       # Helper function to set file extension if it does not match the expected one
     function Set-FileExtensionIfNotMatch {
 	[CmdletBinding()]
@@ -357,41 +300,42 @@ Begin {
 		if ($currentExtension -ne $expectedExtension) {
 			Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
 			Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
-		}
-    }
-
-    # Helper function to get file extension from 'trid' command output
-    function Get-FileExtensionFromTrid {
+    
+      # Helper function to set file extension if it does not match the expected one
+    function Set-FileExtensionIfNotMatch {
 	[CmdletBinding()]
 	Param (
 	    [Parameter(Mandatory)]
 	    [string]$FileName
 	)
-		$tridOutput = trid $FileName
+		$currentExtension = [System.IO.Path]::GetExtension($FileName)
+		$expectedExtension = Get-FileExtensionFromTrid -FileName $FileName
 
-		if ($tridOutput -match "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)") {
-			$highestMatch = ($tridOutput | Select-String "(\d+\.?\d*)%\s+\((\.\S+)\)\s+(.*)" -AllMatches).Matches | Select-Object -First 1
-			$extension = ($highestMatch.Groups[2].Value -split '/')[0]
-
-			# Return the extension
-			return $extension
-		}
-		else {
-			# Return an empty string if no matches are found
-			return ""
-		}
-	}
-    
+		if ($currentExtension -ne $expectedExtension) {
+			Rename-Item -Path $FileName -NewName ("$FileName$expectedExtension")
+			Write-Output "Renamed file '$FileName' to have extension '$expectedExtension'"
 }
 
 # Process block
 Process {
 	Clear-Cache @CacheClearParams
 
-    Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLet"
+    
+	# Prepare launcher options
+	
+	$OperaLaunchParams = @{
+		FilePath = $launcher
+		ArgumentList = (Prepare-LauncherOptions @launchParams)
+	}
 
-    Set-Location $driveLet\
-	Launch_opera_profile -a $childNode
+	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
+
+    Set-Location $driveLetter
+	
+
+	Write-Verbose "Process options: $OperaLaunchParams"
+
+	Start-Process @OperaLaunchParams -Wait 
 }
 
 # End block
