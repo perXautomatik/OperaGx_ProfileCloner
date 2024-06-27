@@ -50,10 +50,10 @@ Begin {
 		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
 		DownloadsPath = Join-Path $DriveLetter "downloads"
 		ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
-			
-		PathSufix = '\_side_profiles'
-		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		
+		PathSufix = '\_side_profiles'
+		sessionStorage =  Join-Path $DriveLetter "sessionStorage"
+		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')        
 		Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network'
                                 , 'Local Extension Settings'
@@ -74,7 +74,7 @@ Begin {
 		ChildNode = $ProfileAlias
 		CopyToCache = @($ProfileConfig['CopyToCache'] , $Default.CopyToCache)| ?{ $null -ne $_}[0]
 		Preserve = @($ProfileConfig['Preserve'] , $Default.Preserve)| ?{ $null -ne $_}[0]
-		
+		SessionStorage = @($ProfileConfig['sessionStorage'] , $Default.sessionStorage)| ?{ $null -ne $_}[0]
 		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]					
 	}
 

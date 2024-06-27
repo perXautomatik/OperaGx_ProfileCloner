@@ -6,13 +6,15 @@ function Clear-Cache {
         $PathSufix,
         $SourceFolder,
         $ChildNode,
-        $ProfileFolderPath
+        $ProfileFolderPath,
+        $ExcludedExtensions,
+        $SessionStorage
      )
     begin 		
     {
     
         $PreparedParams = @{
-            SessionStorage = "$($params.DriveLet)\sessionStorage"
+            
             SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
             ProfileLocation = ""
         }
@@ -150,12 +152,17 @@ function HashKeys-ByFunction {
     process {
         $toProcess  | %{
             $currentFolder = $_
-            $parentName = $currentFolder.Parent.Name
-            $newFolder = Join-Path -Path $PreparedParams.SessionStorage -ChildPath (join-path $parentName (Get-SessionId -ChildPath $currentFolder))
-        
-            if ((Get-ChildItem $currentFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+            $nrChildren = (Get-ChildItem $currentFolder -ErrorAction SilentlyContinue).Length
+            $internalVars = @{        
+                    currentFolder = $currentFolder
+                    parentName = $currentFolder.Parent.Parent.Name
+                    newFolder = Join-Path -Path $PreparedParams.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))
+                    shouldProcess = $nrChildren -gt 0
+                }
+
+            if ($internalVars.shouldProcess) {
                 # Check if the new folder already exists
-                if ((Get-ChildItem -Path $newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
+                if ((Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
                     Write-Debug "The folder already exists."
                 } else {
                     
@@ -166,7 +173,7 @@ function HashKeys-ByFunction {
                     $moveParams = @{
                         ExcludedExtension = $ExcludedExtensions
                         OriginalFolderPath = $currentFolder.FullName
-                        NewFolderPath = $newFolder
+                        NewFolderPath = $internalVars.newFolder
                     }
                     
                     # Move files based on the defined parameters
