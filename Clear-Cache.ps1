@@ -8,20 +8,25 @@ function Clear-Cache {
         $ChildNode,
         $ProfileFolderPath,
         $ExcludedExtensions,
-        $SessionStorage
+        $SessionStorage,
+        $ExcludedFileNames
      )
     begin 		
     {
         # Retrieve cache directories and process each one
-        $uu = $params.ExcludedExtensions
         $PreparedParams = @{
             SourceFolder = $null
             ProfileLocation = $null
             toProcess = $null
             clearCasheToProcess = $null 
-            ExcludedExtensions = ($ExcludedExtensions,$uu | ?{$null -ne $_}) | select -First 1
+            ExcludedExtensions = $null
+            ExcludedFileNames = $null
             }
 
+$extToExclude = ( @($ExcludedExtensions,$params.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
+$filToExclude = (@($ExcludedFileNames,$params."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
+        $PreparedParams.ExcludedExtensions = $extToExclude
+        $PreparedParams.ExcludedFileNames = $filToExclude
         $PreparedParams.SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
         $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $params.ChildNode
         $PreparedParams.toProcess = Get-ChildItem -Path ($PreparedParams.ProfileLocation) -Depth 1 -Include "cache"                    
@@ -97,7 +102,7 @@ function Clear-Cache {
                 $childPath
             )
     
-            $internalItems = ($childPath | get-childitem );
+            $internalItems = ($childPath | get-childitem -ErrorAction SilentlyContinue );
             $firtFile = (($internalItems | Sort-Object CreationTime | Select-Object -First 1).CreationTime);
             $lastFile = (($internalItems | Sort-Object CreationTime -Descending | Select-Object -First 1).CreationTime);
             $setFilext = $lastFile -$firtFile
@@ -106,25 +111,30 @@ function Clear-Cache {
             {
                 $from = get-date -date $firtFile  -Format "yyMMdd_HHmmss"
                 $to = get-date -date $lastFile  -Format "yyMMdd_HHmmss"
+                $sessionId = "$from to $to"
+            }
+            else {  
+                $sessionId = (Get-Date -Format "yyMMdd_HHmmss");
             }
     
-            $sessionId = (Get-Date -Format "yyMMdd_HHmmss");
+            
             return $sessionId;
         }
 
-        function Move-BasedOnExtension {
+        function Move-ToSessionStorage {
             [CmdletBinding()]
             param (
                 [Parameter(Mandatory = $true)] [string]$OriginalFolderPath,			
-                [Parameter(Mandatory = $true)] [string]$ExcludedExtensions,			
-                [Parameter(Mandatory = $true)] [string]$NewFolderPath
+                [Parameter(Mandatory = $false)] [string]$ExcludedExtensions,			
+                [Parameter(Mandatory = $true)] [string]$NewFolderPath,
+                [Parameter(Mandatory = $false)] [string]$ExcludedFileNames
             )
                         
             # Retrieve all files in the original folder path
             $files = Get-ChildItem -Path $OriginalFolderPath -File
                             
             # Filter files to exclude the specified extensions
-            $filesToMove = $files | Where-Object { $_.Extension -notin ($ExcludedExtensions -split ",") }
+            $filesToMove = $files | ?{ $_.Extension -notin ($ExcludedExtensions -split ",") }| ?{ $_.Name -notin ($ExcludedFileNames -split ",") }
         
             # Check if there are files to move
             if ($filesToMove) {
@@ -179,29 +189,35 @@ function Clear-Cache {
             }
             
             if ($nrChildren -gt 0) {
-
-                $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))                        
-                $internalVars.theFolderExsistsError = (Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0
+                try {
+    
+                    $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))  -ErrorAction Stop                                            
                     
+                    $internalVars.theFolderExsistsError = (Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0                            
+                    # Check if the new folder already exists
+                        if ($internalVars.theFolderExsistsError) {
+                            Write-Debug "The folder already exists."
+                        } else {
+                        
+                        # Change file extensions before moving
+                        $currentFolder.FullName | & $global:setFilextPath
 
-                # Check if the new folder already exists
-                    if ($internalVars.theFolderExsistsError) {
-                        Write-Debug "The folder already exists."
-                    } else {
-                    
-                    # Change file extensions before moving
-                    $currentFolder.FullName | & $global:setFilextPath
-
-                    # Define parameters for moving files based on extension
-                    $moveParams = @{
-                        ExcludedExtension = $PreparedParams.ExcludedExtensions
-                        OriginalFolderPath = $currentFolder.FullName
-                        NewFolderPath = $internalVars.newFolder
-                    }
-                    
-                    # Move files based on the defined parameters
-                    Move-BasedOnExtension @moveParams
-                }	
+                        # Define parameters for moving files based on extension
+                        $moveParams = @{
+                            ExcludedExtension = $PreparedParams.ExcludedExtensions
+                            ExcludedFileNames = $PreparedParams.ExcludedFileNames
+                            OriginalFolderPath = $currentFolder.FullName
+                            NewFolderPath = $internalVars.newFolder
+                        }
+                        
+                        # Move files based on the defined parameters
+                        Move-ToSessionStorage @moveParams
+                    }	
+                
+                }
+                catch {
+                    Write-Error $_    
+                }
             }
             else {
                 Write-Debug "the folder is empty, skipping"

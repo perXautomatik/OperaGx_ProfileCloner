@@ -50,7 +50,7 @@ Begin {
 		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
 		DownloadsPath = Join-Path $DriveLetter "downloads"
 		ExtensionsToLoad = (Get-ChildItem -Path "$DriveLetter\crx").FullName
-		
+		ExcludedFileNames = "data_0,data_1,data_2,data_3,indexs"
 		PathSufix = '\_side_profiles'
 		sessionStorage =  Join-Path $DriveLetter "sessionStorage"
 		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
@@ -76,6 +76,7 @@ Begin {
 		Preserve = @($ProfileConfig['Preserve'] , $Default.Preserve)| ?{ $null -ne $_}[0]
 		SessionStorage = @($ProfileConfig['sessionStorage'] , $Default.sessionStorage)| ?{ $null -ne $_}[0]
 		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]					
+		ExcludedFileNames = @($ProfileConfig['ExcludedFileNames'] , $Default.ExcludedFileNames)| ?{ $null -ne $_}[0]					
 	}
 
     
