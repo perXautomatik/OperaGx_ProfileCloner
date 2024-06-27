@@ -38,11 +38,12 @@ Begin {
     # Override defaults with specific profile configurations if provided
 	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
 
-	Push-Location 
-	cd $DriveLetter
-	$global:setFilextPath = (Resolve-Path -Relative -path "./Set-FileExtensions.ps1");
-	$global:ClearCachePath = (Resolve-Path -Relative -path "./Clear-Cache.ps1");
-	Pop-Location
+	
+	$global:setFilextPath = ("$driveLetter\OperaLauncher\Set-FileExtensions.ps1");
+	$global:ClearCachePath = ("$driveLetter\OperaLauncher\Clear-Cache.ps1");
+	$global:purgeProfilePath = ("$driveLetter\OperaLauncher\PurgeProfile.ps1");
+	
+	. $global:ClearCachePath
 
 	$Default = @{
 		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
@@ -54,7 +55,10 @@ Begin {
 		ExcludedExtensions = ".pam,.zip,.tar,.gz,.null,.gpg,.woff2,.woff,.bs,.ini,.ttf"
 		
 		CopyToCache = @('IndexedDB\chrome-extension_jdbgjlehkajddoapdgpdjmlpdalfnenf_0.indexeddb.blob', 'Sessions')        
-		Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network', 'Local Extension Settings','Preferences')
+		Preserve = @('Bookmarks', 'History', 'Bookmarks.bak', 'Web Data', 'Extension State', 'Cookies', 'Cache','Local Storage', 'Session Storage', 'Login Data', 'network'
+                                , 'Local Extension Settings'
+                                #,'Preferences'
+                                )
 	}
 
 	$launchParams = @{
@@ -99,9 +103,10 @@ Begin {
         $validParameters = (Get-Command $commandName).Parameters.Keys
         # Filter out invalid parameters
         $setFilext = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
-        $setFilext | % { $HashedParams.Remove($_) }
+		$copiedHash = ([hashtable]$HashedParams).Clone()
+        $setFilext | % { $copiedHash.Remove($_) }
         
-        return $HashedParams						
+        return $copiedHash						
     }
 	
 	# Prepare launcher options
@@ -114,7 +119,7 @@ Begin {
 
 # Process block
 Process {
-	. $global:ClearCachePath
+	
 	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams)
     
 	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
@@ -128,7 +133,7 @@ Process {
 
 # End block
 End {
-    & $driveLetter\OperaLauncher\PurgeProfile.ps1 @CacheClearParams
+    & $global:purgeProfilePath @CacheClearParams
 
 	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams)
 }
