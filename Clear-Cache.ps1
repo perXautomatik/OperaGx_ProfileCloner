@@ -12,29 +12,37 @@ function Clear-Cache {
      )
     begin 		
     {
-    
+        # Retrieve cache directories and process each one
+        $uu = $params.ExcludedExtensions
         $PreparedParams = @{
-            
-            SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
-            ProfileLocation = ""
-        }
+            SourceFolder = $null
+            ProfileLocation = $null
+            toProcess = $null
+            clearCasheToProcess = $null 
+            ExcludedExtensions = ($ExcludedExtensions,$uu | ?{$null -ne $_}) | select -First 1
+            }
 
-        $PreparedParams.ProfileLocation = 
-        Join-Path -Path $PreparedParams.SourceFolder -ChildPath $params.ChildNode
-
-function HashKeys-ByFunction {
-    param (
-        $commandName,
-        $HashedParams
-        )
-        # Get the list of valid parameter names for the function
-        $validParameters = (Get-Command $commandName).Parameters.Keys
-        # Filter out invalid parameters
-        $setFilext = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
-        $setFilext | % { $HashedParams.Remove($_) }
+        $PreparedParams.SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
+        $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $params.ChildNode
+        $PreparedParams.toProcess = Get-ChildItem -Path ($PreparedParams.ProfileLocation) -Depth 1 -Include "cache"                    
+        $PreparedParams.clearCasheToProcess = $PreparedParams.toProcess | % {Get-ChildItem -Path $_.FullName  }	
+    
         
-        return $HashedParams						
-    }
+
+        
+        function HashKeys-ByFunction {
+            param (
+                $commandName,
+                $HashedParams
+                )
+                # Get the list of valid parameter names for the function
+                $validParameters = (Get-Command $commandName).Parameters.Keys
+                # Filter out invalid parameters
+                $setFilext = $HashedParams.Keys | ? { $_ -notin $validParameters } ;
+                $setFilext | % { $HashedParams.Remove($_) }
+                
+                return $HashedParams						
+            }
     
         function Process-WithProgressBar {
             [CmdletBinding()]
@@ -116,7 +124,7 @@ function HashKeys-ByFunction {
             $files = Get-ChildItem -Path $OriginalFolderPath -File
                             
             # Filter files to exclude the specified extensions
-            $filesToMove = $files | Where-Object { $_.Extension -notin $ExcludedExtensions -split "," }
+            $filesToMove = $files | Where-Object { $_.Extension -notin ($ExcludedExtensions -split ",") }
         
             # Check if there are files to move
             if ($filesToMove) {
@@ -143,35 +151,50 @@ function HashKeys-ByFunction {
         }
         
 
-        # Navigate to the source folder
-        #Push-Location
-        #Set-Location -Path $SourceFolder
-        # Retrieve cache directories and process each one
-        $toProcess = Get-ChildItem -Path $PreparedParams.ProfileLocation -Depth 1 -Include "cache" | % {Get-ChildItem -Path $_.FullName  }		
+	
     }
     process {
-        $toProcess  | %{
+        $PreparedParams.clearCasheToProcess | %{
             $currentFolder = $_
-            $nrChildren = (Get-ChildItem $currentFolder -ErrorAction SilentlyContinue).Length
-            $internalVars = @{        
-                    currentFolder = $currentFolder
-                    parentName = $currentFolder.Parent.Parent.Name
-                    newFolder = Join-Path -Path $PreparedParams.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))
-                    shouldProcess = $nrChildren -gt 0
-                }
+            
+            try {
+                Get-ChildItem $currentFolder -ErrorAction Stop
+            }
+            catch {                
+                $currentFolder = get-item ($currentFolder.Target)
+            }
 
-            if ($internalVars.shouldProcess) {
+
+            try {                                
+                $nrChildren = ( Get-ChildItem $currentFolder  -ErrorAction Stop).Length
+            }
+            catch {
+                $nrChildren = 0
+            }
+            $internalVars = @{
+                currentFolder = $currentFolder
+                parentName = $currentFolder.Parent.Parent.Name
+                newFolder = $null
+                theFolderExsistsError = $null
+            }
+            
+            if ($nrChildren -gt 0) {
+
+                $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))                        
+                $internalVars.theFolderExsistsError = (Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0
+                    
+
                 # Check if the new folder already exists
-                if ((Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0) {
-                    Write-Debug "The folder already exists."
-                } else {
+                    if ($internalVars.theFolderExsistsError) {
+                        Write-Debug "The folder already exists."
+                    } else {
                     
                     # Change file extensions before moving
                     $currentFolder.FullName | & $global:setFilextPath
 
                     # Define parameters for moving files based on extension
                     $moveParams = @{
-                        ExcludedExtension = $ExcludedExtensions
+                        ExcludedExtension = $PreparedParams.ExcludedExtensions
                         OriginalFolderPath = $currentFolder.FullName
                         NewFolderPath = $internalVars.newFolder
                     }

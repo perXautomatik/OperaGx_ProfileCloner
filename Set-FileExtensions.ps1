@@ -105,7 +105,7 @@
 			$ProgressParams.Status = "Processing item $current of $total"
 
 			#invoke
-			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
+			$ProgressParams.CurrentOperation = $currentObject.name
 			$ProgressParams = filter-HashTableForSplatting Write-Progress $ProgressParams;
 			# Display the progress bar using splatting
 			Write-Progress @ProgressParams
