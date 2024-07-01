@@ -96,7 +96,7 @@
 
 			# Increment the current count
 			$current++
-			if($total -eq 0) { $total = 1}			
+			if($total -eq 0) { $total = 1}
 			# Calculate the percentage of completion
 			$percent = ($current / $total) * 100
 
@@ -105,7 +105,7 @@
 			$ProgressParams.Status = "Processing item $current of $total"
 
 			#invoke
-			$ProgressParams.CurrentOperation = $currentObject.name
+			$ProgressParams.CurrentOperation = $ProcessBlock.Invoke($currentObject).ToString()
 			$ProgressParams = filter-HashTableForSplatting Write-Progress $ProgressParams;
 			# Display the progress bar using splatting
 			Write-Progress @ProgressParams
@@ -131,7 +131,7 @@
 					$files += Get-ChildItem $item -File
 				}
 			}
-			
+
 			if ($files) {
 				$ProgressParams.TotalCount = $files.Count;
 				# Process each file with the progress bar
@@ -141,7 +141,7 @@
 					Set-FileExtensionIfNotMatch $file.FullName
 				} -ProgressParams $ProgressParams
 			}
-			
+
 
 		}
 		end {

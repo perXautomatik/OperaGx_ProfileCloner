@@ -9,7 +9,8 @@ function Clear-Cache {
         $ProfileFolderPath,
         $ExcludedExtensions,
         $SessionStorage,
-        $ExcludedFileNames
+        $ExcludedFileNames,
+        [switch]$promptForName
      )
     begin 		
     {
@@ -22,18 +23,13 @@ function Clear-Cache {
             ExcludedExtensions = $null
             ExcludedFileNames = $null
             }
-
-$extToExclude = ( @($ExcludedExtensions,$params.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
-$filToExclude = (@($ExcludedFileNames,$params."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
-        $PreparedParams.ExcludedExtensions = $extToExclude
-        $PreparedParams.ExcludedFileNames = $filToExclude
+        
+        $PreparedParams.ExcludedExtensions = ( @($ExcludedExtensions,$params.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
+        $PreparedParams.ExcludedFileNames = (@($ExcludedFileNames,$params."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
         $PreparedParams.SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
         $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $params.ChildNode
         $PreparedParams.toProcess = Get-ChildItem -Path ($PreparedParams.ProfileLocation) -Depth 1 -Include "cache"                    
         $PreparedParams.clearCasheToProcess = $PreparedParams.toProcess | % {Get-ChildItem -Path $_.FullName  }	
-    
-        
-
         
         function HashKeys-ByFunction {
             param (
@@ -190,8 +186,16 @@ $filToExclude = (@($ExcludedFileNames,$params."ExcludedFileNames") | ?{$null -ne
             
             if ($nrChildren -gt 0) {
                 try {
-    
-                    $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name (Get-SessionId -ChildPath $currentFolder))  -ErrorAction Stop                                            
+                        $saveSuffix = (Get-SessionId -ChildPath $currentFolder)
+                    if ($promptForName) {
+                        $saveSuffix += PromptForName();
+                    }
+                    else {
+                                               
+                    }
+                    
+                    $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name $saveSuffix)  -ErrorAction Stop                                            
+                    
                     
                     $internalVars.theFolderExsistsError = (Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0                            
                     # Check if the new folder already exists

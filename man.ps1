@@ -7,7 +7,7 @@ The script imports necessary modules, launches Opera with the given profile, and
 
 .PARAMETER ProfileAlias
 The alias of the profile to launch.
-
+ 
 .PARAMETER DriveLetter
 The drive letter where Opera is installed.
 
@@ -25,7 +25,7 @@ A hashtable containing specific configurations for profiles.
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_vin",
+    [string]$ProfileAlias = "a_wif",
     [string]$DriveLetter = 'E:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{}
