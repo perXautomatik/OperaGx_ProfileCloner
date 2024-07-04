@@ -20,7 +20,9 @@
         [ValidateNotNullOrEmpty()]
         [string[]]$preserve,
         [Parameter(Mandatory=$false)]
-        [string[]]$ExcludedExtensions
+        [string[]]$ExcludedExtensions,
+        [string[]]$ExcludedFileNames,
+        [string]$SessionStorage
     )
     $profilePath = Join-Path -Path $driveLet -ChildPath $pathSufix
     $originalProfilePath = Join-Path -Path $profilePath -ChildPath $childNode

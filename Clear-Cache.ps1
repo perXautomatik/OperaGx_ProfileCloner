@@ -188,7 +188,7 @@ function Clear-Cache {
                 try {
                         $saveSuffix = (Get-SessionId -ChildPath $currentFolder)
                     if ($promptForName) {
-                        $saveSuffix += PromptForName();
+                     #TODO:   $saveSuffix += PromptForName();
                     }
                     else {
                                                
