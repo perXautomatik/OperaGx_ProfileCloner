@@ -61,6 +61,18 @@ Begin {
                                 )
 	}
 
+function Combine-ProfileConfig {
+  param (
+    [Parameter(Mandatory=$true)]
+    [hashtable] $DefaultConfig,
+    [hashtable] $ProfileConfig
+  )
+  
+  $mergedConfig = @{}
+  $mergedConfig = $DefaultConfig.Clone()
+  $mergedConfig += $ProfileConfig | Where-Object { $_.Key -ne $null }
+  return $mergedConfig
+}
 	$launchParams = @{
 		Profile = $ProfileAlias
 		Extensions = @($ProfileConfig['Extensions'] , $Default.ExtensionsToLoad)| ?{ $null -ne $_}[0]
