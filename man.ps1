@@ -18,31 +18,74 @@ The path to the Opera launcher executable.
 A hashtable containing specific configurations for profiles.
 
 .EXAMPLE
-.\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap' -ProfileSpecific @{ 'a_jap' = @{ 'Extensions' = @('path\to\extension1', 'path\to\extension2'); 'DownloadsPath' = 'E:\Downloads' } }
+.\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap' -ProfileSpecific @{ 'a_jap' = @{ 'Extensions' = @('path\to\extension1', 'path\to\extension2'); 'DownloadsPath' = '$DriveLetter\Downloads' } }
 #>
 
 # Define parameters
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_toon",
-    [string]$DriveLetter = 'E:',
+    [string]$ProfileAlias = "a_mat",
+    [string]$DriveLetter = 'H:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
-		#"E:\crx\Auto-Tab-Discard-suspend.crx",
-		#"E:\crx\downloadhelper_8_2_0_20.crx",
-		"E:\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-		"E:\crx\I-don-t-care-about-cookies.crx",
-		"E:\crx\ImageAssistant-Batch-Image-Downloader.crx",
-		"E:\crx\Image-downloader-Imageye.crx",
-		"E:\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"E:\crx\Immersive Translate webpage_1_2_1_0.crx",
-		#"E:\crx\Load-Background-Tabs-Lazily.crx",
-		"E:\crx\uAutoPagerize.crx",
-		"E:\crx\VisualBookmarks_5_12_2_0.crx",
-		"E:\crx\activityWatch_0_4_3_0.crx"
+		#"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
+		#"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		"$DriveLetter\crx\uAutoPagerize.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
 		
-		); 'DownloadsPath' = 'E:\Downloads' } }
+		); 'DownloadsPath' = '$DriveLetter\Downloads' }; 
+    'a_bust' = @{ 'Extensions' = @(
+		"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
+		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		"$DriveLetter\crx\uAutoPagerize.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
+		
+		) }; 
+    'a_wif' = @{ 'Extensions' = @(
+		"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
+		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		#"$DriveLetter\crx\uAutoPagerize.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"		
+		) }; 
+    'a_mat' = @{ 'Extensions' = @(
+		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		#"$DriveLetter\crx\uAutoPagerize.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx",
+"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx"
+		) }}
 )
 
 # Begin block
@@ -63,7 +106,7 @@ Begin {
 	. $global:ClearCachePath
 
 	$Default = @{
-		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
+		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-featur$DriveLetterside-profiles --no-default-browser-check'
 		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
 		DownloadsPath = Join-Path $DriveLetter "downloads"
 		Extensions = (Get-ChildItem -Path "$DriveLetter\crx").FullName
