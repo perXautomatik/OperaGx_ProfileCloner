@@ -19,13 +19,39 @@ A hashtable containing specific configurations for profiles.
 
 .EXAMPLE
 .\LaunchOperaProfile.ps1 -ProfileAlias 'a_jap' -ProfileSpecific @{ 'a_jap' = @{ 'Extensions' = @('path\to\extension1', 'path\to\extension2'); 'DownloadsPath' = '$DriveLetter\Downloads' } }
-#>
 
+.todo
+    -fix extension loading to also include last and first extension
+    -include activity watch renaming
+    -multithread file renaming, maybe separate process identifiying the new name, then utelize some trix to rename faster on ntfs harddrives
+    -deduce session age by assuming that it can not range than more than a few hours, and that it probably is represented by the majority of the files present
+    -allow usage with firefox profiles
+    -make sure visual bookmarks extens state is kept (make sure to only copy relevant files on session capture, not to move or rename them)
+    -backup by moving session first to another drive with guranteed space, then delete with recyclebin, then move back in place 
+    -allow ongoing cachfolder moving process during browser running
+        -watch process of ongoing cache moving as a taskbar progressbar
+        -allow ongoing or manual move of cache
+        -allow locking of files in cache folder, refusing changes or deleting from the browser
+        -utelzie program to stich togeter ts files from browser folder
+    - use git to monitor changes in profile settings, bookmarks, cookies and history, but not as blobs
+    - failsafe in case no space left on hd, preferably some sort of stop all, or stop all unsafe actions
+    - allow backup of browser sessions by encapsulating relevant files, (through git etc) (requires a major restructure of everything)
+    - specify extensions to load by simply calling them by name, not requiring exact path
+    - get download location to work (currently sets to system default)
+    - integrate with browser wrangler (br) (for example open correct profile for content deemed more suitable for such etc)
+    - create session summary, like time total of session, tabs opened, bookmarks saved, time spent on each tab, 
+    - allow session migration between chromium based browser and mozilla based browsers
+    - allow session migration between current browser and legazy browsers
+    - activity watch catigorization based on activity watch category json file
+    - taggui integration, runnign after session is concluded on renamed session folder, or list of folders
+    - start profile loading and simmilar as its own task freeing up console if more profiles need to be loaded.
+
+    #>
 # Define parameters
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_mat",
+    [string]$ProfileAlias = "a_arb",
     [string]$DriveLetter = 'H:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
@@ -37,7 +63,7 @@ param (
 		"$DriveLetter\crx\Image-downloader-Imageye.crx",
 		"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
 		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
-		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
 		"$DriveLetter\crx\uAutoPagerize.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
@@ -69,6 +95,22 @@ param (
 		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
 		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
 		#"$DriveLetter\crx\uAutoPagerize.crx",
+        "$DriveLetter\crx\ExportSelectiveBookmarks_1_1_0_0.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"		
+		) };
+    'a_afr' = @{ 'Extensions' = @(
+		"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
+		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		#"$DriveLetter\crx\uAutoPagerize.crx",
+        "$DriveLetter\crx\ExportSelectiveBookmarks_1_1_0_0.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"		
 		) }; 
@@ -85,6 +127,20 @@ param (
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx",
 "$DriveLetter\crx\Auto-Tab-Discard-suspend.crx"
+		) }; 
+    'a_ana' = @{ 'Extensions' = @(
+		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
+		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
+		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
+		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
+		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
+		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
+		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
+		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
+		#"$DriveLetter\crx\uAutoPagerize.crx",
+		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
+"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
+		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
 		) }}
 )
 
