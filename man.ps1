@@ -275,21 +275,74 @@ function Monitor-DiskSpace {
 
 # Process block
 Process {
-	
-	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams)
-    
-	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
+    try {
+        if (-not $cacheClearParams) {
+            throw "Missing parameters for Clear-Cache."
+        }
+        $initialFreeSpace = (Get-PSDrive -Name $DriveLetter).Free
+        if ($initialFreeSpace -lt 1GB) {
+            throw "Insufficient initial disk space. At least 1GB free space is required."
+        }
+        $diskSpaceJob = Start-Job -ScriptBlock {
+            param ($DriveLetter, $ThresholdMB)
+            Monitor-DiskSpace -DriveLetter $DriveLetter -ThresholdMB $ThresholdMB
+        } -ArgumentList $DriveLetter, 1024
+        try {
+            $filteredHash = Filter-ValidParameters "Clear-Cache" $cacheClearParams
+        } catch {
+            Write-Error "Failed to filter valid parameters: $_"
+            throw
+        }
 
+        # Execute Clear-Cache
+        try {
+	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams) -ErrorAction Stop
+        } catch {
+            Write-Error "Clear-Cache failed: $_"
+            throw
+        }
+
+	Write-Verbose "Invoking OperaLauncher with parameter $childNode on drive $driveLetter"
+        try {
     Set-Location $driveLetter	
+        } catch {
+            Write-Error "Failed to set location to $DriveLetter: $_"
+            throw
+        }
 
 	Write-Verbose "Process options: $OperaLaunchParams"
-
+        try {
 	Start-Process @OperaLaunchParams -Wait 
+        } catch {
+            Write-Error "Failed to start OperaLauncher: $_"
+            throw
+        }
+        Stop-Job -Job $diskSpaceJob
+        Remove-Job -Job $diskSpaceJob
+    } catch {
+        Write-Error "Process block failed: $_"
+        throw
+    }
 }
 
 # End block
 End {
+    try {
+        try {
     & $global:purgeProfilePath @CacheClearParams
+        } catch {
+            Write-Error "Failed to execute purge profile script: $_"
+            throw
+        }
 
-	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams)
+        try {
+	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams) -ErrorAction Stop
+        } catch {
+            Write-Error "Clear-Cache in End block failed: $_"
+            throw
+        }
+    } catch {
+        Write-Error "End block failed: $_"
+        throw
+    }
 }
