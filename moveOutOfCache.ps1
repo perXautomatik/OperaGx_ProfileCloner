@@ -29,8 +29,8 @@ function Get-CacheSortConfig {
   $config | Add-Member -MemberType NoteProperty -Name TargetFolderPattern -Value (if ($config.TargetFolderPattern) { $config.TargetFolderPattern } else { "{0}\cache\{1}" })
   $config | Add-Member -MemberType NoteProperty -Name ExcludedExtensions -Value (if ($config.ExcludedExtensions) { $config.ExcludedExtensions } else { "dat,db" })
   $config | Add-Member -MemberType NoteProperty -Name SessionIdPattern -Value (if ($config.SessionIdPattern) { $config.SessionIdPattern } else { "yyMMdd_HHmmss" })
-  <span class="math-inline">config \| Add\-Member \-MemberType NoteProperty \-Name UseSessionId \-Value \(if \(</span>({$config.UseSessionId}).is[bool]) { $config.UseSessionId } else { $true })
-  <span class="math-inline">config \| Add\-Member \-MemberType NoteProperty \-Name MoveFiles \-Value \(if \(</span>({$config.MoveFiles}).is[bool]) { $config.MoveFiles } else { $true })
+  $config | Add-Member -MemberType NoteProperty -Name UseSessionId -Value (if (({$config.UseSessionId}).is[bool]) { $config.UseSessionId } else { $true })
+  $config | Add-Member -MemberType NoteProperty -Name MoveFiles -Value (if (({$config.MoveFiles}).is[bool]) { $config.MoveFiles } else { $true })
 
   return $config
 }
