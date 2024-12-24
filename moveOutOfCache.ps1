@@ -56,14 +56,31 @@ function Get-SessionId {
 
 # Function to move files based on extension
 function Move-BasedOnExtension {
-  param (
-    [string] $SourceFolderPath,
-    [string] $ExcludedExtensions,
-    [string] $TargetFolderPath
+    param (
+      [string] $SourceFolderPath,
+      [string] $ExcludedExtensions,
+      [string] $TargetFolderPath,
+      [int] $MinFileSize = 0,
+      [string[]] $AllowedFileTypes = $null,
+      [string[]] $IgnoredFiles = $null
   )
 
   $files = Get-ChildItem -Path $SourceFolderPath -File
-
+  
+    # Filter files based on size (if MinFileSize is set)
+    if ($MinFileSize -gt 0) {
+      $files = $files | Where-Object { $_.Length -ge $MinFileSize }
+    }
+  
+    # Filter files based on allowed types (if provided)
+    if ($AllowedFileTypes) {
+      $files = $files | Where-Object { $_.Extension -in $AllowedFileTypes }
+    }
+  
+    # Filter out ignored files (if provided)
+    if ($IgnoredFiles) {
+      $files = $files | Where-Object { !($_.Name -split "."[0]) -in $IgnoredFiles }
+    }
   $filesToMove = $files | Where-Object { $_.Extension -notin $ExcludedExtensions.Split(",") }
 
   if ($filesToMove) {
