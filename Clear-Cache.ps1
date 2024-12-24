@@ -1,11 +1,17 @@
 function Clear-Cache {
     [CmdletBinding()]
     param (
-        $params,
+        [Parameter(Mandatory = $true)]
         $driveLet,
+
+        [Parameter(Mandatory = $true)]
         $PathSufix,
         [string]$SourceFolder,
+
+        [Parameter(Mandatory = $true)]
         [string]$ChildNode,
+
+        [Parameter(Mandatory = $true)]
         [string]$ProfileFolderPath,
         [string[]]$ExcludedExtensions,
         [string]$SessionStorage,
