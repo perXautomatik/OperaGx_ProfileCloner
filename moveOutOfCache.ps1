@@ -81,7 +81,14 @@ function Move-BasedOnExtension {
     if ($IgnoredFiles) {
       $files = $files | Where-Object { !($_.Name -split "."[0]) -in $IgnoredFiles }
     }
-  $filesToMove = $files | Where-Object { $_.Extension -notin $ExcludedExtensions.Split(",") }
+	
+	# Filter out ExcludedExtensions (if provided)
+    if ($ExcludedExtensions) {
+      $files = $files | Where-Object { $_.Extension -notin $ExcludedExtensions.Split(",") }
+    }
+	
+	
+  $filesToMove = $files
 
   if ($filesToMove) {
     New-Item -ItemType Directory -Force -Path $TargetFolderPath | Out-Null
