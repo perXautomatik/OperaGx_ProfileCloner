@@ -87,14 +87,14 @@ function Move-BasedOnExtension {
     New-Item -ItemType Directory -Force -Path $TargetFolderPath | Out-Null
 
     if (Test-Path $TargetFolderPath) {
-      Move-Item -Path $filesToMove.FullName -Destination <span class="math-inline">TargetFolderPath \-PassThru
-Write\-Verbose "</span>($filesToMove.Count) file(s) moved to $TargetFolderPath"
+          Move-Item -Path $filesToMove.FullName -Destination $targetSubfolder -PassThru
+        Write-Verbose "$($files.Count) file(s) moved to $TargetFolderPath"
     } else {
       Write-Error "Failed to create target folder: $TargetFolderPath"
       exit
     }
   } else {
-    Write-Verbose "No files to move based on the specified extensions."
+      Write-Verbose "No files to move based on the specified criteria."
   }
 }
 
