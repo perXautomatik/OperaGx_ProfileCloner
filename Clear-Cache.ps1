@@ -4,13 +4,13 @@ function Clear-Cache {
         $params,
         $driveLet,
         $PathSufix,
-        $SourceFolder,
-        $ChildNode,
-        $ProfileFolderPath,
-        $ExcludedExtensions,
-        $SessionStorage,
-        $ExcludedFileNames,
-        [switch]$promptForName
+        [string]$SourceFolder,
+        [string]$ChildNode,
+        [string]$ProfileFolderPath,
+        [string[]]$ExcludedExtensions,
+        [string]$SessionStorage,
+        [string[]]$ExcludedFileNames,
+        [switch]$PromptForName
      )
     begin 		
     {
