@@ -88,9 +88,8 @@ function Move-BasedOnExtension {
     }
 	
 	
-  $filesToMove = $files
-
-  if ($filesToMove) {
+  
+    if ($files) {
     New-Item -ItemType Directory -Force -Path $TargetFolderPath | Out-Null
 
     if (Test-Path $TargetFolderPath) {
