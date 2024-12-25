@@ -30,10 +30,10 @@ function Clear-Cache {
             ExcludedFileNames = $null
             }
         
-        $PreparedParams.ExcludedExtensions = ( @($ExcludedExtensions,$params.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
-        $PreparedParams.ExcludedFileNames = (@($ExcludedFileNames,$params."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
-        $PreparedParams.SourceFolder = (Join-Path -Path $params.DriveLet -ChildPath $params.PathSufix)
-        $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $params.ChildNode
+        $PreparedParams.ExcludedExtensions = ( @($ExcludedExtensions,$PSBoundParameters.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
+        $PreparedParams.ExcludedFileNames = (@($ExcludedFileNames,$PSBoundParameters."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
+        $PreparedParams.SourceFolder = (Join-Path -Path $PSBoundParameters.DriveLet -ChildPath $PSBoundParameters.PathSufix)
+        $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $PSBoundParameters.ChildNode
         $PreparedParams.toProcess = Get-ChildItem -Path ($PreparedParams.ProfileLocation) -Depth 1 -Include "cache"                    
         $PreparedParams.clearCasheToProcess = $PreparedParams.toProcess | % {Get-ChildItem -Path $_.FullName  }	
         
@@ -200,7 +200,7 @@ function Clear-Cache {
                                                
                     }
                     
-                    $internalVars.newFolder = Join-Path -Path $params.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name $saveSuffix)  -ErrorAction Stop                                            
+                    $internalVars.newFolder = Join-Path -Path $PSBoundParameters.SessionStorage -ChildPath (join-path $currentFolder.Parent.Parent.Name $saveSuffix)  -ErrorAction Stop                                            
                     
                     
                     $internalVars.theFolderExsistsError = (Get-ChildItem -Path $internalVars.newFolder -ErrorAction SilentlyContinue).Length -gt 0                            
