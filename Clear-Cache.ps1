@@ -30,8 +30,8 @@ function Clear-Cache {
             ExcludedFileNames = $null
             }
         
-        $PreparedParams.ExcludedExtensions = ( @($ExcludedExtensions,$PSBoundParameters.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1
-        $PreparedParams.ExcludedFileNames = (@($ExcludedFileNames,$PSBoundParameters."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1
+        $PreparedParams.ExcludedExtensions = ((@($ExcludedExtensions,$PSBoundParameters.ExcludedExtensions ) | ?{$null -ne $_}) | select -First 1) -join ""
+        $PreparedParams.ExcludedFileNames = ((@($ExcludedFileNames,$PSBoundParameters."ExcludedFileNames") | ?{$null -ne $_}) | select -First 1) -join ""
         $PreparedParams.SourceFolder = (Join-Path -Path $PSBoundParameters.DriveLet -ChildPath $PSBoundParameters.PathSufix)
         $PreparedParams.ProfileLocation = Join-Path -Path ($PreparedParams.SourceFolder) -ChildPath $PSBoundParameters.ChildNode
         $PreparedParams.toProcess = Get-ChildItem -Path ($PreparedParams.ProfileLocation) -Depth 1 -Include "cache"                    
@@ -136,7 +136,7 @@ function Clear-Cache {
             $files = Get-ChildItem -Path $OriginalFolderPath -File
                             
             # Filter files to exclude the specified extensions
-            $filesToMove = $files | ?{ $_.Extension -notin ($ExcludedExtensions -split ",") }| ?{ $_.Name -notin ($ExcludedFileNames -split ",") }
+            $filesToMove = $files | ?{ $_.Extension -notin ($ExcludedExtensions -split ",") }| ?{ $_.Name -notin ($ExcludedFileNames.ToString() -split ",") }
         
             # Check if there are files to move
             if ($filesToMove) {

@@ -182,7 +182,7 @@ Begin {
 		Preserve = @($ProfileConfig['Preserve'] , $Default.Preserve)| ?{ $null -ne $_}[0]
 		SessionStorage = @($ProfileConfig['sessionStorage'] , $Default.sessionStorage)| ?{ $null -ne $_}[0]
 		ExcludedExtensions = @($ProfileConfig['ExcludedExtensions'] , $Default.ExcludedExtensions)| ?{ $null -ne $_}[0]					
-		ExcludedFileNames = @($ProfileConfig['ExcludedFileNames'] , $Default.ExcludedFileNames)| ?{ $null -ne $_}[0]					
+		ExcludedFileNames = @($ProfileConfig['ExcludedFileNames'] , $Default.ExcludedFileNames)| ?{ $null -ne $_}[0]							
 	}
 
 	function HashKeys-ByFunction {
@@ -202,24 +202,24 @@ Begin {
         $setFilext | % { $copiedHash.Remove($_) }
         
         return $copiedHash						
-    }
+	}
 	 # Create the alias 
 	 Set-Alias -Name Filter-ValidParameters -Value HashKeys-ByFunction
 	
-		# Function to prepare launcher options
-		function Prepare-LauncherOptions {
-			[CmdletBinding()] param (	 [Parameter(Mandatory = $true)][hashtable]$inputParams )											
-				$AllArgs = @() 
-				$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
-				if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
-				if ($inputParams.DownloadsPath) { $AllArgs += " --download.default_directory='" + $inputParams.DownloadsPath + "'"}
-				$AllArgs +=$inputParams.Parameters
-	
-				Write-Verbose "Launcher arguments: $AllArgs"
-	
-				return $AllArgs
-		}
-	
+			# Function to prepare launcher options
+			function Prepare-LauncherOptions {
+				[CmdletBinding()] param (	 [Parameter(Mandatory = $true)][hashtable]$inputParams )											
+					$AllArgs = @() 
+					$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
+					if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
+					if ($inputParams.DownloadsPath) { $AllArgs += " --download.default_directory='" + $inputParams.DownloadsPath + "'"}
+					$AllArgs +=$inputParams.Parameters
+		
+					Write-Verbose "Launcher arguments: $AllArgs"
+		
+					return $AllArgs
+			}
+		
 
 	# Prepare launcher options
 	$OperaLaunchParams = @{
@@ -258,6 +258,7 @@ Process {
         } -ArgumentList $DriveLetter, 1024
         try {
             $filteredHash = Filter-ValidParameters "Clear-Cache" $cacheClearParams
+			$filteredHash.ProfileFolderPath = $Default.ProfileFolderPath
         } catch {
             Write-Error "Failed to filter valid parameters: $_"
             throw
@@ -305,7 +306,7 @@ End {
         }
 
         try {
-	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams) -ErrorAction Stop
+	Clear-Cache @filteredHash -ErrorAction Stop
         } catch {
             Write-Error "Clear-Cache in End block failed: $_"
             throw
