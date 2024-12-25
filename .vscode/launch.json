@@ -8,7 +8,7 @@
             "name": "PowerShell Launch Current File",
             "type": "PowerShell",
             "request": "launch",
-            "script": "${file}",
+            "script": "${workspaceFolder}/man.ps1",
             "cwd": "${cwd}",
             "args": []
         }
