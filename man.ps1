@@ -187,6 +187,7 @@ Begin {
 		
 		$mergedConfig = @{}
 		$filteredConfigs = @{}
+    if ($profileConfig.Count -gt 0) {
 		$mergedConfig = $ProfileConfig.Clone()
 		$notInProfile = $DefaultConfig.GetEnumerator().Where( {!($_.Key -in $ProfileConfig.Keys)} )
 		
@@ -195,6 +196,9 @@ Begin {
 		
 		$mergedConfig.GetEnumerator().Where({$_.Key -in $keys}).ForEach({$filteredConfigs[$_.key]=$_.Value })
 
+    } else {
+        $filteredConfig = $defaultSettings.Clone()
+    }
 		return $filteredConfigs
 	  }
 
@@ -207,7 +211,7 @@ Begin {
 
 
 
-	$CacheClearParams = @{
+    $cacheClearParams = @{
 		driveLet = $DriveLetter
 		PathSufix = @($ProfileConfig['PathSufix'] , $Default.PathSufix)| ?{ $null -ne $_}[0]
 		ChildNode = $ProfileAlias
