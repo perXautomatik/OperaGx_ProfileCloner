@@ -257,6 +257,19 @@ Begin {
 		FilePath = $launcher
 		ArgumentList = (Prepare-LauncherOptions -inputParams $launchParams)
 	}
+function Monitor-DiskSpace {
+    param (
+        [string]$DriveLetter,
+        [int]$ThresholdMB
+    )
+    while ($true) {
+        $freeSpaceMB = (Get-PSDrive -Name $DriveLetter).Free / 1MB
+        if ($freeSpaceMB -lt $ThresholdMB) {
+            Write-Warning "Warning: Free space on drive $DriveLetter is below $ThresholdMB MB. Current free space: $freeSpaceMB MB."
+        }
+        Start-Sleep -Seconds 5
+    }
+}
 	
 }
 
