@@ -296,7 +296,7 @@ Process {
 
         # Execute Clear-Cache
         try {
-	Clear-Cache (HashKeys-ByFunction "Clear-Cache" $CacheClearParams) -ErrorAction Stop
+	Clear-Cache @filteredHash -ErrorAction Stop
         } catch {
             Write-Error "Clear-Cache failed: $_"
             throw
