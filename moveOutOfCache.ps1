@@ -60,6 +60,7 @@ function Move-BasedOnExtension {
       [string] $SourceFolderPath,
       [string] $ExcludedExtensions,
       [string] $TargetFolderPath,
+      [bool] $SortByExtension = $true,
       [int] $MinFileSize = 0,
       [string[]] $AllowedFileTypes = $null,
       [string[]] $IgnoredFiles = $null
@@ -94,6 +95,11 @@ function Move-BasedOnExtension {
 
     if (Test-Path $TargetFolderPath) {
         foreach ($file in $files) {
+          $targetSubfolder = $TargetFolderPath
+          if ($SortByExtension) {
+            $targetSubfolder = Join-Path -Path $targetSubfolder -ChildPath $file.Extension
+            New-Item -ItemType Directory -Force -Path $targetSubfolder | Out-Null
+          }
           Move-Item -Path $file.FullName -Destination $targetSubfolder -PassThru
         }
         Write-Verbose "$($files.Count) file(s) moved to $TargetFolderPath"
