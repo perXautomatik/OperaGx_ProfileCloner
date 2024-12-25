@@ -54,14 +54,11 @@ param (
     [string]$ProfileAlias = "a_mat",
     [string]$DriveLetter = 'G:',
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
-		#"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
-		#"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
 		"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
 		"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
 		"$DriveLetter\crx\Image-downloader-Imageye.crx",
 		"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
 		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
 		"$DriveLetter\crx\uAutoPagerize.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
@@ -73,10 +70,6 @@ param (
 		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
 		"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
-		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
-		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
-		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
 		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
 		"$DriveLetter\crx\uAutoPagerize.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
@@ -87,13 +80,6 @@ param (
 		"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
-		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
-		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
-		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
-		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
-		#"$DriveLetter\crx\uAutoPagerize.crx",
         "$DriveLetter\crx\ExportSelectiveBookmarks_1_1_0_0.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"		
@@ -102,13 +88,7 @@ param (
 		"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
-		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
 		"$DriveLetter\crx\Image-downloader-Imageye.crx",
-		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
-		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
-		#"$DriveLetter\crx\uAutoPagerize.crx",
         "$DriveLetter\crx\ExportSelectiveBookmarks_1_1_0_0.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"		
@@ -116,13 +96,6 @@ param (
     'a_mat' = @{ 'Extensions' = @(
 		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
-		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
-		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
-		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
-		#"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
-		#"$DriveLetter\crx\uAutoPagerize.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx",
 "$DriveLetter\crx\Auto-Tab-Discard-suspend.crx"
@@ -130,13 +103,7 @@ param (
     'a_ana' = @{ 'Extensions' = @(
 		"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
 		"$DriveLetter\crx\Folderwise-Bookmarks-Search-Sessions.crx",
-		#"$DriveLetter\crx\I-don-t-care-about-cookies.crx",
-		#"$DriveLetter\crx\ImageAssistant-Batch-Image-Downloader.crx",
-		#"$DriveLetter\crx\Image-downloader-Imageye.crx",
-		#"$DriveLetter\crx\ImageSearchAssistant_2_0_9_0.crx",
-		#"$DriveLetter\crx\Immersive Translate webpage_1_2_1_0.crx",
 		"$DriveLetter\crx\Load-Background-Tabs-Lazily.crx",
-		#"$DriveLetter\crx\uAutoPagerize.crx",
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 "$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
@@ -149,7 +116,7 @@ param (
 # Begin block
 Begin {
 
-	
+
 	$global:setFilextPath = ("$driveLetter\OperaLauncher\Set-FileExtensions.ps1");
 	$global:ClearCachePath = ("$driveLetter\OperaLauncher\Clear-Cache.ps1");
 	$global:purgeProfilePath = ("$driveLetter\OperaLauncher\PurgeProfile.ps1");
@@ -204,11 +171,8 @@ Begin {
     # Override defaults with specific profile configurations if provided
 	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_} | select -first 1
 
-
+	
 	$launchParams += Combine-ProfileConfig -DefaultConfig $Default -ProfileConfig $ProfileConfig -keys extensions,downloadspath,Parameters
-
-
-
 
     $cacheClearParams = @{
 		driveLet = $DriveLetter
@@ -221,22 +185,6 @@ Begin {
 		ExcludedFileNames = @($ProfileConfig['ExcludedFileNames'] , $Default.ExcludedFileNames)| ?{ $null -ne $_}[0]					
 	}
 
-    
-	# Function to prepare launcher options
-	function Prepare-LauncherOptions {
-		[CmdletBinding()] param (	 [Parameter(Mandatory = $true)][hashtable]$inputParams )											
-			$AllArgs = @() 
-			$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
-			if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
-			if ($inputParams.DownloadsPath) { $AllArgs += " --download.default_directory='" + $inputParams.DownloadsPath + "'"}
-			$AllArgs +=$inputParams.Parameters
-
-			Write-Verbose "Launcher arguments: $AllArgs"
-
-			return $AllArgs
-	}
-
-	
 	function HashKeys-ByFunction {
 		param (
 			$commandName,
@@ -252,6 +200,21 @@ Begin {
         return $copiedHash						
     }
 	
+		# Function to prepare launcher options
+		function Prepare-LauncherOptions {
+			[CmdletBinding()] param (	 [Parameter(Mandatory = $true)][hashtable]$inputParams )											
+				$AllArgs = @() 
+				$AllArgs += '--side-profile-name="' + $inputParams.Profile + '"'			
+				if ($inputParams.Extensions) { $AllArgs += " --load-extension='" + ($inputParams.Extensions -join ',') + "'" } 			
+				if ($inputParams.DownloadsPath) { $AllArgs += " --download.default_directory='" + $inputParams.DownloadsPath + "'"}
+				$AllArgs +=$inputParams.Parameters
+	
+				Write-Verbose "Launcher arguments: $AllArgs"
+	
+				return $AllArgs
+		}
+	
+
 	# Prepare launcher options
 	$OperaLaunchParams = @{
 		FilePath = $launcher
