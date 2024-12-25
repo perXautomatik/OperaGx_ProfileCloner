@@ -51,7 +51,7 @@ A hashtable containing specific configurations for profiles.
 [CmdletBinding()]
 param (
     [Alias("ChildNode")]
-    [string]$ProfileAlias = "a_arb",
+    [string]$ProfileAlias = "a_mat",
     [string]$DriveLetter = 'H:',
     [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
