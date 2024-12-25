@@ -53,7 +53,6 @@ param (
     [Alias("ChildNode")]
     [string]$ProfileAlias = "a_mat",
     [string]$DriveLetter = 'H:',
-    [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe",
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
 		#"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		#"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
@@ -141,7 +140,10 @@ param (
 		"$DriveLetter\crx\VisualBookmarks_5_12_2_0.crx",
 "$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		"$DriveLetter\crx\activityWatch_0_4_3_0.crx"
-		) }}
+		) }},
+    $basePath = 	"$DriveLetter\OperaLauncher",
+    $configPath = 	"$basePath\config.json",
+    [string]$Launcher = "$DriveLetter\OperaGXPortable\App\OperaGX\launcher.exe"
 )
 
 # Begin block
