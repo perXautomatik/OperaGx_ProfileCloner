@@ -164,7 +164,7 @@ Begin {
 	. $global:ClearCachePath
 
 	$Default = @{
-		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-featur$DriveLetterside-profiles --no-default-browser-check'
+		Parameters = '--disable-usage-statistics-question --side-profile-minimal --with-feature:side-profiles --no-default-browser-check'
 		ProfileFolderPath = Join-Path $DriveLetter "_side_profiles"
 		DownloadsPath = Join-Path $DriveLetter "downloads"
 		Extensions = (Get-ChildItem -Path "$DriveLetter\crx").FullName
