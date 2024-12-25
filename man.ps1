@@ -52,7 +52,7 @@ A hashtable containing specific configurations for profiles.
 param (
     [Alias("ChildNode")]
     [string]$ProfileAlias = "a_mat",
-    [string]$DriveLetter = 'H:',
+    [string]$DriveLetter = 'G:',
     [hashtable]$ProfileSpecific = @{ 'a_toon' = @{ 'Extensions' = @(
 		#"$DriveLetter\crx\Auto-Tab-Discard-suspend.crx",
 		#"$DriveLetter\crx\downloadhelper_8_2_0_20.crx",
@@ -279,7 +279,7 @@ Process {
         if (-not $cacheClearParams) {
             throw "Missing parameters for Clear-Cache."
         }
-        $initialFreeSpace = (Get-PSDrive -Name $DriveLetter).Free
+        $initialFreeSpace = (Get-PSDrive -Name $DriveLetter[0]).Free
         if ($initialFreeSpace -lt 1GB) {
             throw "Insufficient initial disk space. At least 1GB free space is required."
         }
@@ -306,7 +306,7 @@ Process {
         try {
     Set-Location $driveLetter	
         } catch {
-            Write-Error "Failed to set location to $DriveLetter: $_"
+            Write-Error "Failed to set location to $DriveLetter :$_"
             throw
         }
 
