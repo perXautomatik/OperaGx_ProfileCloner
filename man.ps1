@@ -192,7 +192,7 @@ Begin {
 		$mergedConfig.GetEnumerator().Where({$_.Key -in $keys}).ForEach({$filteredConfigs[$_.key]=$_.Value })
 
     } else {
-        $filteredConfig = $defaultSettings.Clone()
+        $filteredConfigs = $defaultSettings.Clone()
     }
 		return $filteredConfigs
 	  }
