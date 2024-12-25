@@ -151,10 +151,7 @@ Begin {
 
     # Set default values	
     # Override defaults with specific profile configurations if provided
-	$profRes = $ProfileSpecific[$ProfileAlias]
-	$ProfileConfig = if($profRes) {$profRes} else {
-		@{}
-	}
+	$ProfileConfig = @($ProfileSpecific[$ProfileAlias] , @{})| ?{ $null -ne $_}[0]
 
 	
 	$global:setFilextPath = ("$driveLetter\OperaLauncher\Set-FileExtensions.ps1");
