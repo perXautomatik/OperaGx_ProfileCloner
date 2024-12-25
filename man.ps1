@@ -187,7 +187,11 @@ Begin {
 
 	function HashKeys-ByFunction {
 		param (
+			[Parameter(Mandatory=$true)]
+			[ValidateNotNullOrEmpty()]
 			$commandName,
+			[Parameter(Mandatory=$true)]
+			[ValidateNotNullOrEmpty()]
 			$HashedParams
 			)
 		# Get the list of valid parameter names for the function
@@ -199,6 +203,8 @@ Begin {
         
         return $copiedHash						
     }
+	 # Create the alias 
+	 Set-Alias -Name Filter-ValidParameters -Value HashKeys-ByFunction
 	
 		# Function to prepare launcher options
 		function Prepare-LauncherOptions {
